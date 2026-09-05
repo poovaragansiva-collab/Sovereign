@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    container_name: sovereign_db
+    environment:
+      # These variables should be configured via an .env file
+      POSTGRES_USER: ${POSTGRES_USER:-sovereign_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sovereign_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-sovereign}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+# Additional services (Frontend, Backend, Ollama, etc.) will be added in future phases.
+
+volumes:
+  postgres_data:
