@@ -1,21 +1,51 @@
 version: '3.8'
 
 services:
-  db:
-    image: postgres:15
-    container_name: sovereign_db
-    environment:
-      # These variables should be configured via an .env file
-      POSTGRES_USER: ${POSTGRES_USER:-sovereign_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sovereign_pass}
-      POSTGRES_DB: ${POSTGRES_DB:-sovereign}
+  # The FastAPI Application (Owned by Backend team)
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
-      - "5432:5432"
+      - "8000:8000"
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    volumes:
+      - ./chroma_db:/app/chroma_db
+      - ./local_outputs:/app/local_outputs
+      - ./models:/app/models
+    depends_on:
+      - ollama
+      - db
+
+  # PostgreSQL (Owned by Backend team)
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: sovereign
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
+    ports:
+      - "5432:5432"
 
-# Additional services (Frontend, Backend, Ollama, etc.) will be added in future phases.
+  # Local Ollama Service
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    # NOTE: If running on a machine with a GPU, you must enable GPU passthrough.
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
 
 volumes:
   postgres_data:
+  ollama_data:
