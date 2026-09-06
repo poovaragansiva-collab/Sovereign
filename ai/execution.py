@@ -25,14 +25,14 @@ class AIExecutionService:
     def __init__(self, output_dir: str = "local_outputs"):
         self.registry = self._build_registry()
         self.router = ModelRouter(self.registry)
-        
+
         self.ai_client = OllamaClient(base_url=get_ollama_base_url())
         self.verifier = StructuredVerifier()
-        
+
         self.tool_registry = ToolRegistry()
         self.tool_registry.register(CalculatorTool())
         self.vision_client = OllamaVisionClient(ai_client=self.ai_client)
-        
+
         # Defer heavy initialization (like embedding models) unless needed,
         # but for this orchestration we construct the retriever interface.
         # RAG is optional; if the components aren't fully configured, we skip.
@@ -51,7 +51,7 @@ class AIExecutionService:
             tool_registry=self.tool_registry,
             vision_client=self.vision_client
         )
-        
+
         self.output_dir = output_dir
 
     def _build_registry(self) -> ModelRegistry:
@@ -69,7 +69,7 @@ class AIExecutionService:
                 return registry
             except json.JSONDecodeError as e:
                 raise ValueError(f"Invalid SOVEREIGN_MODELS configuration: {str(e)}")
-                
+
         # Default local models
         registry.register(ModelInfo(name="llama3", type="general", enabled=True))
         registry.register(ModelInfo(name="qwen2.5-coder", type="coding", enabled=True))
@@ -92,12 +92,47 @@ class AIExecutionService:
     def execute(self, task: AITaskInput) -> AITaskOutput:
         # 1. Map AITaskInput to AgentState
         capability = task.capability if task.capability else "general"
-        
+
         # Inject inputs required by tool/RAG/vision nodes
         input_data = dict(task.input_data)
-        if task.files and capability == "vision" and "image_path" not in input_data:
-            input_data["image_path"] = task.files[0]
-            
+        if task.files:
+            if capability == "vision" and "image_path" not in input_data:
+                input_data["image_path"] = task.files[0]
+            else:
+                # Add to vectorstore for RAG
+                try:
+                    from rag.loaders import TextLoader, PDFLoader, DOCXLoader
+                    from rag.chunking import TextSplitter
+
+                    splitter = TextSplitter()
+
+                    all_chunks = []
+                    for f_path in task.files:
+                        if not os.path.exists(f_path):
+                            continue
+
+                        docs = []
+                        if f_path.endswith('.txt'):
+                            docs = TextLoader().load(f_path)
+                        elif f_path.endswith('.pdf'):
+                            docs = PDFLoader().load(f_path)
+                        elif f_path.endswith('.docx'):
+                            docs = DOCXLoader().load(f_path)
+
+                        if docs:
+                            chunks = splitter.split_documents(docs)
+                            all_chunks.extend(chunks)
+
+                    if all_chunks and self.vectorstore and self.embeddings:
+                        texts = [c["text"] for c in all_chunks]
+                        metadatas = [c["metadata"] for c in all_chunks]
+                        # Assume synchronous embedding generation for local
+                        embeds = self.embeddings.embed_documents(texts)
+                        self.vectorstore.add_texts(texts, metadatas, embeds)
+                except Exception as e:
+                    print(f"Failed to load RAG documents: {e}")
+
+
         initial_state: AgentState = {
             "task": task.task,
             "task_type": task.task_type,
@@ -114,7 +149,7 @@ class AIExecutionService:
         errors = final_state.get("errors", [])
         verification = final_state.get("verification", {})
         ver_status = verification.get("status", "failed")
-        
+
         if errors or ver_status == "failed":
             status = TaskStatus.FAILED
         elif ver_status == "requires_review":

@@ -26,32 +26,24 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# Virtual Environments
-venv/
-env/
-.venv/
-.env/
-
-# Data and Storage
-chroma_db/
-local_outputs/
-*.sqlite
-*.sqlite3
-*.db
-*.db3
-*.s3db
-*.sl3
-
-# Secrets
+# Environment
 .env
-.env.local
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
 
-# IDEs
-.vscode/
-.idea/
-*.swp
-*.swo
+# SQLite databases
+*.sqlite3
+sovereign.db
 
-# Downloaded Models (if any local safetensors/binaries are cached here)
-*.bin
-*.safetensors
+# User uploaded and generated files
+uploads/
+local_outputs/
+chroma_db/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/

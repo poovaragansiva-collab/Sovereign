@@ -1,51 +1,19 @@
 version: '3.8'
 
 services:
-  # The FastAPI Application (Owned by Backend team)
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile
+  backend:
+    build: .
     ports:
       - "8000:8000"
-    environment:
-      - OLLAMA_HOST=http://ollama:11434
     volumes:
-      - ./chroma_db:/app/chroma_db
+      - ./sovereign.db:/app/sovereign.db
+      - ./uploads:/app/uploads
       - ./local_outputs:/app/local_outputs
-      - ./models:/app/models
-    depends_on:
-      - ollama
-      - db
-
-  # PostgreSQL (Owned by Backend team)
-  db:
-    image: postgres:15-alpine
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: sovereign
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+      - OLLAMA_HOST=http://host.docker.internal:11434
 
-  # Local Ollama Service
-  ollama:
-    image: ollama/ollama:latest
+  frontend:
+    build:
+      context: ./frontend
     ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    # NOTE: If running on a machine with a GPU, you must enable GPU passthrough.
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
-
-volumes:
-  postgres_data:
-  ollama_data:
+      - "5173:5173"
