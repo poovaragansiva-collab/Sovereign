@@ -1,4 +1,3 @@
-version: '3.8'
 
 services:
   backend:
@@ -10,7 +9,8 @@ services:
       - ./uploads:/app/uploads
       - ./local_outputs:/app/local_outputs
     environment:
-      - OLLAMA_HOST=http://host.docker.internal:11434
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - 'SOVEREIGN_MODELS=[{"name":"gemma3:4b", "type":"general"}, {"name":"qwen3:4b", "type":"reasoning"}, {"name":"qwen2.5-coder:3b", "type":"coding"}]'
 
   frontend:
     build:
