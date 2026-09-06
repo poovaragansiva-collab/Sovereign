@@ -7,3 +7,10 @@ pytesseract>=0.3.10
 python-docx>=1.1.0
 reportlab>=4.1.0
 openpyxl>=3.1.2
+PyPDF2>=3.0.0
+
+fastapi
+uvicorn
+pydantic
+python-multipart
+requests
