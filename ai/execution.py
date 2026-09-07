@@ -161,7 +161,7 @@ class AIExecutionService:
 
         # 4. Generate Output File if requested
         generated_files = []
-        fmt = task.options.get("output_format")
+        fmt = task.options.get("output_format") or task.options.get("format")
         if fmt and status != TaskStatus.FAILED and response_text:
             try:
                 generator = self._get_output_generator(fmt)

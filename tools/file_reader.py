@@ -31,7 +31,11 @@ class FileReaderTool(ToolInterface):
         full_path = os.path.abspath(os.path.join(self.allowed_directory, file_path))
         
         # Ensure the resolved path is strictly within the allowed directory
-        if not full_path.startswith(self.allowed_directory):
+        try:
+            common = os.path.commonpath([full_path, self.allowed_directory])
+            if common != self.allowed_directory:
+                raise PermissionError(f"Access to {file_path} is denied (path traversal attempted)")
+        except (ValueError, Exception):
             raise PermissionError(f"Access to {file_path} is denied (path traversal attempted)")
             
         try:

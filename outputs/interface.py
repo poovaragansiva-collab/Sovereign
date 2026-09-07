@@ -18,7 +18,11 @@ class OutputGeneratorInterface(ABC):
         full_path = os.path.abspath(os.path.join(self.output_dir, clean_filename))
         
         # Verify it's within the intended directory
-        if not full_path.startswith(self.output_dir):
+        try:
+            common = os.path.commonpath([full_path, self.output_dir])
+            if common != self.output_dir:
+                raise PermissionError(f"Path traversal attempt blocked: {filename}")
+        except (ValueError, Exception):
             raise PermissionError(f"Path traversal attempt blocked: {filename}")
             
         # Do not overwrite existing files directly if avoiding overwrites is a requirement,

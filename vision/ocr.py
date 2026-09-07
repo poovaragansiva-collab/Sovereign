@@ -11,10 +11,10 @@ except ImportError:
 class LocalOCR(OCRInterface):
     """Local OCR implementation using Tesseract."""
     def extract_text(self, image_path: str) -> str:
-        if Image is None or pytesseract is None:
-            raise ImportError("Pillow and pytesseract must be installed for LocalOCR.")
         if not os.path.exists(image_path):
             raise FileNotFoundError(f"Image not found: {image_path}")
+        if Image is None or pytesseract is None:
+            raise ImportError("Pillow and pytesseract must be installed for LocalOCR.")
             
         try:
             image = Image.open(image_path)
