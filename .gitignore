@@ -47,3 +47,8 @@ chroma_db/
 # Frontend
 frontend/node_modules/
 frontend/dist/
+
+*.db
+*.log
+.env
+.env.*
