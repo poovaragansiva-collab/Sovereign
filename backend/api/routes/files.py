@@ -41,8 +41,30 @@ async def download_file(file_id: str, format: str = "txt"):
     file_name = f"{safe_id}.{safe_format}"
     file_path = os.path.join(OUTPUTS_DIR, file_name)
     
-    if not os.path.exists(file_path):
-        # Could also be in uploads depending on usecase, but req says generated files
-        raise HTTPException(status_code=404, detail="File not found")
+    if os.path.exists(file_path):
+        return FileResponse(path=file_path, filename=file_name)
         
-    return FileResponse(path=file_path, filename=file_name)
+    # Check direct filename in OUTPUTS_DIR
+    direct_path = os.path.join(OUTPUTS_DIR, safe_id)
+    if os.path.exists(direct_path) and os.path.isfile(direct_path):
+        return FileResponse(path=direct_path, filename=safe_id)
+
+    # Check UPLOAD_DIR
+    upload_path = os.path.join(UPLOAD_DIR, safe_id)
+    if os.path.exists(upload_path) and os.path.isfile(upload_path):
+        return FileResponse(path=upload_path, filename=safe_id)
+        
+    # Check with format extension in UPLOAD_DIR
+    upload_ext_path = os.path.join(UPLOAD_DIR, file_name)
+    if os.path.exists(upload_ext_path) and os.path.isfile(upload_ext_path):
+        return FileResponse(path=upload_ext_path, filename=file_name)
+
+    # Check for file matching safe_id prefix in UPLOAD_DIR
+    if os.path.exists(UPLOAD_DIR):
+        for f in os.listdir(UPLOAD_DIR):
+            if f.startswith(safe_id):
+                matched = os.path.join(UPLOAD_DIR, f)
+                if os.path.isfile(matched):
+                    return FileResponse(path=matched, filename=f)
+
+    raise HTTPException(status_code=404, detail="File not found")
