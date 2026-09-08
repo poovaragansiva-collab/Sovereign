@@ -70,11 +70,6 @@ class AIExecutionService:
             except json.JSONDecodeError as e:
                 raise ValueError(f"Invalid SOVEREIGN_MODELS configuration: {str(e)}")
 
-        # Default local models
-        registry.register(ModelInfo(name="llama3", type="general", enabled=True))
-        registry.register(ModelInfo(name="qwen2.5-coder", type="coding", enabled=True))
-        registry.register(ModelInfo(name="llava", type="vision", enabled=True))
-        registry.register(ModelInfo(name="nomic-embed-text", type="embedding", enabled=True))
         return registry
 
     def _get_output_generator(self, fmt: str):
@@ -92,6 +87,36 @@ class AIExecutionService:
     def execute(self, task: AITaskInput) -> AITaskOutput:
         # 1. Map AITaskInput to AgentState
         capability = task.capability if task.capability else "general"
+
+        # Validate before execution
+        try:
+            route_info = self.router.route(capability)
+            target_model = route_info["model"]
+            
+            import urllib.request
+            base_url = get_ollama_base_url().rstrip('/')
+            req = urllib.request.Request(f"{base_url}/api/tags")
+            with urllib.request.urlopen(req, timeout=5) as response:
+                tags_data = json.loads(response.read().decode("utf-8"))
+                installed = [m["name"] for m in tags_data.get("models", [])]
+                
+            if target_model not in installed:
+                return AITaskOutput(
+                    task_id=task.task_id,
+                    status=TaskStatus.FAILED,
+                    answer="",
+                    errors=[f"Configured model '{target_model}' is not installed in Ollama."],
+                    model_used=target_model
+                )
+        except Exception as e:
+            if hasattr(e, '__class__') and e.__class__.__name__ == 'ModelRoutingError':
+                return AITaskOutput(
+                    task_id=task.task_id,
+                    status=TaskStatus.FAILED,
+                    answer="",
+                    errors=[str(e)]
+                )
+            # For other exceptions (like urllib error when Ollama is offline), let the workflow handle it.
 
         # Inject inputs required by tool/RAG/vision nodes
         input_data = dict(task.input_data)
