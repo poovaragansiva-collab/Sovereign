@@ -33,7 +33,7 @@ app.include_router(api_v1_router, prefix="/api/v1")
 # Mount root health check
 @app.get("/health", tags=["health"])
 def health():
-    return {"status": "ok", "service": "sovereign-api"}
+    return {"status": "ok"}
 
 # Mount legacy endpoints for backwards compatibility
 app.include_router(legacy_health.router, tags=["legacy-health"])

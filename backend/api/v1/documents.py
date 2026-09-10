@@ -42,18 +42,37 @@ async def upload_document(file: UploadFile = File(...), db: Session = Depends(ge
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to store document: {str(e)}")
 
+    # Index into RAG vectorstore
+    chunks_count = 0
+    page_count = 1
+    ocr_applied = False
+    index_status = "ready"
+    try:
+        from backend.api.v1.rag import get_rag_retriever
+        retriever = get_rag_retriever()
+        idx_res = retriever.index_document(target_path)
+        chunks_count = idx_res.get("chunks_count", 0)
+        page_count = idx_res.get("page_count", 1)
+        ocr_applied = idx_res.get("ocr_applied", False)
+    except Exception as e:
+        index_status = "failed"
+
     doc_record = Document(
         filename=safe_filename,
         file_path=target_path,
         mime_type=file.content_type,
         size=file_size,
-        indexed=True
+        indexed=(index_status == "ready"),
+        chunks_count=chunks_count,
+        ocr_applied=ocr_applied,
+        page_count=page_count,
+        status=index_status
     )
     db.add(doc_record)
     
     audit = AuditLog(
         action="DOCUMENT_UPLOADED",
-        details=f"Uploaded document '{safe_filename}' ({file_size} bytes)"
+        details=f"Uploaded and indexed '{safe_filename}' ({file_size} bytes, {chunks_count} chunks, {page_count} pages, OCR: {ocr_applied})"
     )
     db.add(audit)
     db.commit()
@@ -66,6 +85,10 @@ async def upload_document(file: UploadFile = File(...), db: Session = Depends(ge
         "size": doc_record.size,
         "mime_type": doc_record.mime_type,
         "indexed": doc_record.indexed,
+        "chunks_count": doc_record.chunks_count,
+        "page_count": doc_record.page_count,
+        "ocr_applied": doc_record.ocr_applied,
+        "status": doc_record.status,
         "created_at": doc_record.created_at.isoformat() if doc_record.created_at else None
     }
 
@@ -85,6 +108,10 @@ def list_documents(query: Optional[str] = Query(None), db: Session = Depends(get
                 "size": d.size,
                 "mime_type": d.mime_type,
                 "indexed": d.indexed,
+                "chunks_count": getattr(d, "chunks_count", 0),
+                "page_count": getattr(d, "page_count", 1),
+                "ocr_applied": getattr(d, "ocr_applied", False),
+                "status": getattr(d, "status", "ready"),
                 "created_at": d.created_at.isoformat() if d.created_at else None,
                 "updated_at": d.updated_at.isoformat() if d.updated_at else None
             }
@@ -104,8 +131,13 @@ def get_document(document_id: int, db: Session = Depends(get_db)):
         "size": doc.size,
         "mime_type": doc.mime_type,
         "indexed": doc.indexed,
+        "chunks_count": getattr(doc, "chunks_count", 0),
+        "page_count": getattr(doc, "page_count", 1),
+        "ocr_applied": getattr(doc, "ocr_applied", False),
+        "status": getattr(doc, "status", "ready"),
         "created_at": doc.created_at.isoformat() if doc.created_at else None
     }
+
 
 @router.delete("/{document_id}")
 def delete_document(document_id: int, db: Session = Depends(get_db)):
@@ -119,6 +151,13 @@ def delete_document(document_id: int, db: Session = Depends(get_db)):
             os.remove(doc.file_path)
         except Exception:
             pass
+
+    # Prune chunks from vectorstore
+    try:
+        from backend.api.v1.rag import get_rag_retriever
+        get_rag_retriever().delete_document(doc.file_path)
+    except Exception:
+        pass
 
     filename = doc.filename
     db.delete(doc)

@@ -16,14 +16,17 @@ def get_database_url() -> str:
     return db_url
 
 def get_engine():
-    global _current_url, _engine, _SessionFactory
+    global _current_url, _engine, _SessionFactory, engine
     url = get_database_url()
     if _engine is None or _current_url != url:
         _current_url = url
         connect_args = {"check_same_thread": False} if url.startswith("sqlite") else {}
         _engine = create_engine(url, connect_args=connect_args, echo=False)
         _SessionFactory = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
+        engine = _engine
     return _engine
+
+engine = None
 
 def SessionLocal():
     get_engine()
@@ -38,7 +41,6 @@ def get_db():
         db.close()
 
 def init_db():
-    """Initializes all database tables."""
-    from backend.db import models  # noqa
-    eng = get_engine()
-    Base.metadata.create_all(bind=eng)
+    """Initializes all database tables with safe migrations."""
+    from backend.db.migrations import run_safe_migrations
+    run_safe_migrations()

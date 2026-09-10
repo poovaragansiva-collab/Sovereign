@@ -13,8 +13,13 @@ interface Doc {
   size: number;
   mime_type: string | null;
   indexed: boolean;
+  chunks_count?: number;
+  page_count?: number;
+  ocr_applied?: boolean;
+  status?: string;
   created_at: string | null;
 }
+
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
@@ -189,7 +194,10 @@ export default function DocumentManager({ addToast }: Props) {
                 <th>File</th>
                 <th>Type</th>
                 <th>Size</th>
-                <th>Indexed</th>
+                <th>Pages</th>
+                <th>Chunks</th>
+                <th>OCR</th>
+                <th>Status</th>
                 <th>Uploaded</th>
                 <th>Actions</th>
               </tr>
@@ -212,6 +220,17 @@ export default function DocumentManager({ addToast }: Props) {
                     <span className="badge badge-gray">{d.mime_type?.split('/')[1] ?? 'unknown'}</span>
                   </td>
                   <td className="td-muted">{formatBytes(d.size)}</td>
+                  <td>{d.page_count ?? 1}</td>
+                  <td>
+                    <span className="badge badge-cyan">{d.chunks_count ?? 0}</span>
+                  </td>
+                  <td>
+                    {d.ocr_applied ? (
+                      <span className="badge badge-amber">OCR</span>
+                    ) : (
+                      <span className="td-muted">—</span>
+                    )}
+                  </td>
                   <td>
                     {d.indexed
                       ? <span className="badge badge-green">✓ Indexed</span>
@@ -228,6 +247,7 @@ export default function DocumentManager({ addToast }: Props) {
                       disabled={deleting === d.id}
                     >
                       {deleting === d.id ? '…' : '🗑 Delete'}
+
                     </button>
                   </td>
                 </tr>

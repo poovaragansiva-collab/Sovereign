@@ -17,8 +17,16 @@ class TestBackendAPI(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
+        from backend.db.session import get_engine
+        try:
+            get_engine().dispose()
+        except Exception:
+            pass
         if os.path.exists("test_sovereign.db"):
-            os.remove("test_sovereign.db")
+            try:
+                os.remove("test_sovereign.db")
+            except PermissionError:
+                pass
 
     def test_health(self):
         response = client.get("/health")

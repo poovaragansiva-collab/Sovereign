@@ -20,6 +20,8 @@ from outputs.basic import JSONOutputGenerator, TXTOutputGenerator
 from outputs.docx import DOCXOutputGenerator
 from outputs.pdf import PDFOutputGenerator
 from outputs.xlsx import XLSXOutputGenerator
+from outputs.pptx import PPTXOutputGenerator
+
 
 class AIExecutionService:
     def __init__(self, output_dir: str = "local_outputs"):
@@ -80,9 +82,12 @@ class AIExecutionService:
             return DOCXOutputGenerator(self.output_dir)
         elif fmt == "xlsx":
             return XLSXOutputGenerator(self.output_dir)
+        elif fmt == "pptx":
+            return PPTXOutputGenerator(self.output_dir)
         elif fmt == "json":
             return JSONOutputGenerator(self.output_dir)
         return TXTOutputGenerator(self.output_dir)
+
 
     def execute(self, task: AITaskInput) -> AITaskOutput:
         # 1. Map AITaskInput to AgentState
@@ -93,21 +98,27 @@ class AIExecutionService:
             route_info = self.router.route(capability)
             target_model = route_info["model"]
             
-            import urllib.request
-            base_url = get_ollama_base_url().rstrip('/')
-            req = urllib.request.Request(f"{base_url}/api/tags")
-            with urllib.request.urlopen(req, timeout=5) as response:
-                tags_data = json.loads(response.read().decode("utf-8"))
-                installed = [m["name"] for m in tags_data.get("models", [])]
-                
-            if target_model not in installed:
-                return AITaskOutput(
-                    task_id=task.task_id,
-                    status=TaskStatus.FAILED,
-                    answer="",
-                    errors=[f"Configured model '{target_model}' is not installed in Ollama."],
-                    model_used=target_model
-                )
+            # Allow explicitly registered models
+            reg_names = [m.name for m in self.registry.list_models(enabled_only=True)]
+            if target_model not in reg_names:
+                import urllib.request
+                base_url = get_ollama_base_url().rstrip('/')
+                try:
+                    req = urllib.request.Request(f"{base_url}/api/tags")
+                    with urllib.request.urlopen(req, timeout=3) as response:
+                        tags_data = json.loads(response.read().decode("utf-8"))
+                        installed = [m["name"] for m in tags_data.get("models", [])]
+                        installed_base = [m["name"].split(":")[0] for m in tags_data.get("models", [])]
+                    if target_model not in installed and target_model not in installed_base:
+                        return AITaskOutput(
+                            task_id=task.task_id,
+                            status=TaskStatus.FAILED,
+                            answer="",
+                            errors=[f"Configured model '{target_model}' is not installed in Ollama."],
+                            model_used=target_model
+                        )
+                except Exception:
+                    pass
         except Exception as e:
             if hasattr(e, '__class__') and e.__class__.__name__ == 'ModelRoutingError':
                 return AITaskOutput(
@@ -116,7 +127,6 @@ class AIExecutionService:
                     answer="",
                     errors=[str(e)]
                 )
-            # For other exceptions (like urllib error when Ollama is offline), let the workflow handle it.
 
         # Inject inputs required by tool/RAG/vision nodes
         input_data = dict(task.input_data)
