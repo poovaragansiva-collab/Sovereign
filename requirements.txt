@@ -16,3 +16,4 @@ python-multipart
 requests
 
 sqlalchemy>=2.0,<3.0
+psutil
