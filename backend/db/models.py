@@ -67,6 +67,10 @@ class Document(Base):
     mime_type = Column(String(100), nullable=True)
     size = Column(Integer, default=0, nullable=False)
     indexed = Column(Boolean, default=False, nullable=False)
+    chunks_count = Column(Integer, default=0, nullable=False)
+    ocr_applied = Column(Boolean, default=False, nullable=False)
+    page_count = Column(Integer, default=1, nullable=False)
+    status = Column(String(50), default="ready", nullable=False)  # "ready", "indexing", "failed"
     created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
 
@@ -88,13 +92,16 @@ class Output(Base):
     __tablename__ = "outputs"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    task_id = Column(String(64), ForeignKey("tasks.task_id", ondelete="CASCADE"), nullable=False)
+    task_id = Column(String(64), ForeignKey("tasks.task_id", ondelete="SET NULL"), nullable=True)
+    conversation_id = Column(String(64), ForeignKey("conversations.id", ondelete="SET NULL"), nullable=True)
     filename = Column(String(255), nullable=False)
     file_path = Column(String(1024), nullable=False)
-    format = Column(String(50), nullable=False)  # "pdf", "docx", "xlsx", "json", "txt"
+    format = Column(String(50), nullable=False)  # "pdf", "docx", "xlsx", "pptx", "json", "txt", "md"
+    file_size = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
 
     task = relationship("Task", back_populates="outputs")
+    conversation = relationship("Conversation", back_populates="outputs")
 
 
 class AuditLog(Base):
@@ -109,3 +116,47 @@ class AuditLog(Base):
 
     user = relationship("User", back_populates="audit_logs")
     task = relationship("Task", back_populates="audit_logs")
+
+
+class PluginConfig(Base):
+    __tablename__ = "plugin_configurations"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    name = Column(String(100), unique=True, index=True, nullable=False)
+    enabled = Column(Boolean, default=True, nullable=False)
+    permissions_json = Column(Text, nullable=True)
+    config_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
+
+
+class Conversation(Base):
+    __tablename__ = "conversations"
+
+    id = Column(String(64), primary_key=True, index=True)
+    title = Column(String(255), default="New Conversation", nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
+    selected_model = Column(String(100), nullable=True)
+    capability = Column(String(100), default="general", nullable=False)
+    metadata_json = Column(Text, nullable=True)
+
+    messages = relationship("Message", back_populates="conversation", cascade="all, delete-orphan", order_by="Message.created_at")
+    outputs = relationship("Output", back_populates="conversation")
+
+
+class Message(Base):
+    __tablename__ = "messages"
+
+    id = Column(String(64), primary_key=True, index=True)
+    conversation_id = Column(String(64), ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False)
+    role = Column(String(50), nullable=False)  # "user", "assistant", "system"
+    content = Column(Text, nullable=False)
+    model_used = Column(String(100), nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    metadata_json = Column(Text, nullable=True)
+    sources_json = Column(Text, nullable=True)
+    verification_json = Column(Text, nullable=True)
+
+    conversation = relationship("Conversation", back_populates="messages")
+

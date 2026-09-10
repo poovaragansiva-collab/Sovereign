@@ -133,3 +133,46 @@ def setup_status(db: Session = Depends(get_db)):
     return {
         "setup_required": count == 0
     }
+
+class PullModelRequest(BaseModel):
+    name: str
+
+@router.post("/pull")
+def pull_model(req: PullModelRequest, db: Session = Depends(get_db)):
+    """Pull a model directly into Ollama."""
+    base_url = get_ollama_base_url()
+    try:
+        res = requests.post(f"{base_url}/api/pull", json={"name": req.name, "stream": False}, timeout=120)
+        if res.status_code == 200:
+            audit = AuditLog(
+                action="MODEL_PULLED",
+                details=f"Pulled model '{req.name}' into Ollama"
+            )
+            db.add(audit)
+            db.commit()
+            return {"status": "success", "message": f"Successfully pulled '{req.name}'"}
+        else:
+            raise HTTPException(status_code=res.status_code, detail=res.text)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to pull model: {str(e)}")
+
+@router.delete("/{model_name}")
+def delete_model(model_name: str, db: Session = Depends(get_db)):
+    """Delete a model from local Ollama and remove its DB configuration."""
+    base_url = get_ollama_base_url()
+    try:
+        res = requests.delete(f"{base_url}/api/delete", json={"name": model_name}, timeout=10)
+        # Also remove from DB configurations if present
+        db.query(ModelConfiguration).filter(ModelConfiguration.model_name == model_name).delete()
+        
+        audit = AuditLog(
+            action="MODEL_DELETED",
+            details=f"Deleted model '{model_name}' from Ollama"
+        )
+        db.add(audit)
+        db.commit()
+        sync_sovereign_models_env(db)
+        return {"status": "success", "message": f"Deleted model '{model_name}'"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete model: {str(e)}")
+

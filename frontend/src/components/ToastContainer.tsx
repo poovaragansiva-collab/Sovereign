@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 
-export type ToastType = 'success' | 'error' | 'info';
+export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
 export interface Toast {
   id: string;
@@ -29,6 +29,7 @@ const ICONS: Record<ToastType, string> = {
   success: '✅',
   error: '❌',
   info: 'ℹ️',
+  warning: '⚠️',
 };
 
 interface Props {

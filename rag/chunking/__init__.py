@@ -8,20 +8,30 @@ class TextSplitter:
         
     def split_documents(self, documents: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         chunks = []
-        for doc in documents:
+        for doc_idx, doc in enumerate(documents):
             text = doc["text"]
-            metadata = doc["metadata"]
+            metadata = doc.get("metadata", {})
             
             start = 0
+            chunk_num = 0
             while start < len(text):
                 end = min(start + self.chunk_size, len(text))
                 chunk_text = text[start:end]
+                chunk_num += 1
                 chunks.append({
                     "text": chunk_text,
-                    "metadata": {**metadata, "chunk_start": start, "chunk_end": end}
+                    "metadata": {
+                        **metadata,
+                        "chunk_index": chunk_num,
+                        "chunk_start": start,
+                        "chunk_end": end,
+                        "source": metadata.get("source", "unknown"),
+                        "page": metadata.get("page", 1)
+                    }
                 })
                 if end == len(text):
                     break
                 start += self.chunk_size - self.chunk_overlap
                 
         return chunks
+

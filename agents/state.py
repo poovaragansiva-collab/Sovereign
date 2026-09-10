@@ -16,7 +16,10 @@ class AgentState(TypedDict):
     tool_results: NotRequired[List[Dict[str, Any]]]
     retrieved_context: NotRequired[List[Dict[str, Any]]]
     vision_results: NotRequired[Dict[str, Any]]
+    messages: NotRequired[List[Dict[str, str]]]
+    citations: NotRequired[List[Dict[str, Any]]]
     response: Optional[str]
     verification: NotRequired[Dict[str, Any]]
     errors: NotRequired[List[str]]
     metadata: NotRequired[Dict[str, Any]]
+

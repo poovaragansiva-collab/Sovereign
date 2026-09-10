@@ -1,0 +1,1 @@
+Sovereign Security Policy Section 4: All employees must enable hardware-backed 2FA by October 15. The designated compliance lead is Dr. Sovereign.

@@ -46,6 +46,36 @@ export default function ModelManager({ addToast }: Props) {
   const [ollamaOnline, setOllamaOnline] = useState(false);
   const [localConfig, setLocalConfig] = useState<Record<string, string | null>>({});
   const [dirty, setDirty] = useState(false);
+  const [pullInput, setPullInput] = useState('');
+  const [pulling, setPulling] = useState(false);
+
+  const handlePullModel = async (nameToPull?: string) => {
+    const target = (nameToPull || pullInput).trim();
+    if (!target) return;
+    setPulling(true);
+    try {
+      addToast('info', 'Pulling model...', `Downloading weights for ${target}`);
+      await api.pullModel(target);
+      addToast('success', 'Model pulled successfully', `${target} is now available locally`);
+      setPullInput('');
+      await load();
+    } catch (e: any) {
+      addToast('error', 'Pull failed', e.message);
+    } finally {
+      setPulling(false);
+    }
+  };
+
+  const handleDelete = async (name: string) => {
+    if (!confirm(`Are you sure you want to delete model '${name}' from Ollama?`)) return;
+    try {
+      await api.deleteModel(name);
+      addToast('success', 'Model deleted', `Removed ${name}`);
+      await load();
+    } catch (e: any) {
+      addToast('error', 'Delete failed', e.message);
+    }
+  };
 
   const load = async () => {
     try {
@@ -128,8 +158,44 @@ export default function ModelManager({ addToast }: Props) {
         </div>
       </div>
 
+      {/* Pull Model Bar */}
+      <div className="card" style={{ marginBottom: 20, padding: '14px 18px' }}>
+        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: 'var(--text-primary)' }}>
+          📥 Pull Open-Source Model into Ollama
+        </div>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <input
+            type="text"
+            className="search-input"
+            style={{ flex: 1 }}
+            placeholder="Enter Ollama model tag (e.g. nomic-embed-text, deepseek-r1:1.5b, llava)..."
+            value={pullInput}
+            onChange={e => setPullInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handlePullModel()}
+            disabled={pulling}
+          />
+          <button className="btn btn-primary" onClick={() => handlePullModel()} disabled={pulling || !pullInput.trim()}>
+            {pulling ? 'Pulling...' : 'Pull Model'}
+          </button>
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center' }}>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Quick pulls:</span>
+          {['nomic-embed-text', 'deepseek-r1:1.5b', 'qwen2.5-coder:3b'].map(tag => (
+            <button
+              key={tag}
+              className="badge badge-gray"
+              style={{ cursor: 'pointer', border: 'none' }}
+              onClick={() => handlePullModel(tag)}
+            >
+              + {tag}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Capability summary */}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
+
         {CAPABILITIES.map(cap => (
           <div key={cap} className="metric-card" style={{ flex: '1 1 150px', padding: '12px 14px', gap: 6 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -184,10 +250,21 @@ export default function ModelManager({ addToast }: Props) {
                         )}
                       </div>
                     </div>
-                    {currentCap && (
-                      <span className={`badge ${CAP_COLORS[currentCap]}`}>{currentCap}</span>
-                    )}
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      {currentCap && (
+                        <span className={`badge ${CAP_COLORS[currentCap]}`}>{currentCap}</span>
+                      )}
+                      <button
+                        className="btn-secondary btn-sm"
+                        style={{ padding: '2px 8px', fontSize: 12, color: 'var(--brand-red)' }}
+                        title="Delete model from Ollama"
+                        onClick={() => handleDelete(m.name)}
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   </div>
+
 
                   <div className="form-label" style={{ marginBottom: 8 }}>Assign Capability</div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>

@@ -62,3 +62,42 @@ class OllamaClient(AIClientInterface):
             **kwargs
         }
         return self._make_request("chat", payload)
+
+    def embed(self, input_data: Any, model: str) -> List[List[float]]:
+        """Generate embeddings using Ollama /api/embed."""
+        payload = {
+            "model": model,
+            "input": input_data
+        }
+        res = self._make_request("embed", payload)
+        return res.get("embeddings", [])
+
+    def stream_chat(self, messages: List[Dict[str, str]], model: str, **kwargs: Any):
+        """Yield response tokens progressively using Ollama streaming chat."""
+        url = f"{self.base_url}/api/chat"
+        payload = {
+            "model": model,
+            "messages": messages,
+            "stream": True,
+            **kwargs
+        }
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=60) as response:
+                for line in response:
+                    if line:
+                        decoded = line.decode("utf-8").strip()
+                        if decoded:
+                            try:
+                                chunk = json.loads(decoded)
+                                content = chunk.get("message", {}).get("content", "")
+                                if content:
+                                    yield content
+                                if chunk.get("done", False):
+                                    break
+                            except json.JSONDecodeError:
+                                continue
+        except Exception as e:
+            yield f"\n[Streaming error: {str(e)}]"
+

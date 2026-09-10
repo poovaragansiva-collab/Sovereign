@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { api } from './api';
 import './Workspace.css';
 
-interface Task {
+interface TaskItem {
   task_id: string;
   task: string;
   capability: string;
@@ -12,7 +12,7 @@ interface Task {
 }
 
 const Workspace: React.FC = () => {
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [inputTask, setInputTask] = useState('');
   const [capability, setCapability] = useState('general');
   const [outputFormat, setOutputFormat] = useState('markdown');
@@ -22,8 +22,16 @@ const Workspace: React.FC = () => {
 
   const fetchTasks = async () => {
     try {
-      const res = await axios.get('http://localhost:8000/api/tasks');
-      setTasks(res.data.tasks);
+      const res = await api.listTasks({ limit: 50 });
+      const items = (res.tasks || []).map((t: any) => ({
+        task_id: t.id || t.task_id,
+        task: t.task || t.prompt,
+        capability: t.capability || 'general',
+        model_used: t.model_used || '—',
+        status: t.status || 'completed',
+        created_time: t.created_at || new Date().toISOString(),
+      }));
+      setTasks(items);
     } catch (error) {
       console.error('Failed to fetch tasks', error);
     }
@@ -34,30 +42,30 @@ const Workspace: React.FC = () => {
   }, []);
 
   const handleExecute = async () => {
-    if (!inputTask) return;
+    if (!inputTask.trim()) return;
     setLoading(true);
 
-    let uploadedFiles = [];
+    const uploadedFiles: string[] = [];
     if (selectedFile) {
-        const formData = new FormData();
-        formData.append('file', selectedFile);
-        try {
-            const uploadRes = await axios.post('http://localhost:8000/api/files/upload', formData);
-            uploadedFiles.push(uploadRes.data.path);
-        } catch(e) {
-            console.error('Upload failed', e);
+      try {
+        const uploadRes = await api.uploadDocument(selectedFile);
+        if (uploadRes.file_path) {
+          uploadedFiles.push(uploadRes.file_path);
         }
+      } catch (e) {
+        console.error('Upload failed', e);
+      }
     }
 
     try {
-      const res = await axios.post('http://localhost:8000/api/tasks/execute', {
+      const res = await api.executeTaskDirect({
         task: inputTask,
         task_type: 'generate',
-        capability: capability,
+        capability,
         files: uploadedFiles,
-        options: { format: outputFormat }
+        options: { format: outputFormat },
       });
-      setSelectedTask(res.data);
+      setSelectedTask(res);
       fetchTasks();
     } catch (error) {
       console.error('Task execution failed', error);
@@ -72,11 +80,21 @@ const Workspace: React.FC = () => {
         <h3>Task History</h3>
         <div className="task-list">
           {tasks.map((t) => (
-            <div key={t.task_id} className="task-item" onClick={async () => {
-                const res = await axios.get(`http://localhost:8000/api/tasks/${t.task_id}`);
-                setSelectedTask(res.data);
-            }}>
-              <p><strong>{t.capability}</strong>: {t.status}</p>
+            <div
+              key={t.task_id}
+              className="task-item"
+              onClick={async () => {
+                try {
+                  const res = await api.getTask(t.task_id);
+                  setSelectedTask(res);
+                } catch (e) {
+                  console.error('Failed to load task details', e);
+                }
+              }}
+            >
+              <p>
+                <strong>{t.capability}</strong>: {t.status}
+              </p>
               <small>{new Date(t.created_time).toLocaleString()}</small>
             </div>
           ))}
@@ -95,11 +113,15 @@ const Workspace: React.FC = () => {
               <option value="general">General</option>
               <option value="reasoning">Reasoning</option>
               <option value="coding">Coding</option>
+              <option value="vision">Vision</option>
             </select>
             <select value={outputFormat} onChange={(e) => setOutputFormat(e.target.value)}>
               <option value="markdown">Markdown</option>
               <option value="json">JSON</option>
               <option value="text">Text</option>
+              <option value="pdf">PDF</option>
+              <option value="docx">Word</option>
+              <option value="pptx">PowerPoint</option>
             </select>
             <input type="file" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
             <button onClick={handleExecute} disabled={loading}>
@@ -112,13 +134,15 @@ const Workspace: React.FC = () => {
             <div className="task-result">
               <h3>Result</h3>
               <div className="metadata">
-                <span>Model: {selectedTask.model_used}</span>
+                <span>Model: {selectedTask.model_used || 'Local Router'}</span>
                 <span>Status: {selectedTask.status}</span>
                 {selectedTask.verification && (
-                    <span>Verification: {selectedTask.verification.status} ({selectedTask.verification.confidence})</span>
+                  <span>
+                    Verification: {selectedTask.verification.status} ({selectedTask.verification.confidence})
+                  </span>
                 )}
               </div>
-              <pre className="content">{selectedTask.content || selectedTask.task}</pre>
+              <pre className="content">{selectedTask.answer || selectedTask.content || selectedTask.task}</pre>
             </div>
           )}
         </div>

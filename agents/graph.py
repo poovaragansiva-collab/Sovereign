@@ -62,11 +62,34 @@ class AgentWorkflow:
 
     def rag_node(self, state: AgentState) -> AgentState:
         if state.get("errors"): return state
-        if self.retriever and state.get("input_data", {}).get("rag_query"):
+        query = None
+        if state.get("input_data", {}).get("rag_query"):
+            query = state["input_data"]["rag_query"]
+        elif state.get("input_data", {}).get("document_name"):
+            query = state.get("task")
+
+        if self.retriever and query:
             try:
-                query = state["input_data"]["rag_query"]
                 docs = self.retriever.retrieve(query)
                 state["retrieved_context"] = docs
+                citations = []
+                for d in docs:
+                    meta = d.get("metadata", {})
+                    src = meta.get("source", "Document")
+                    if isinstance(src, str):
+                        import os
+                        src = os.path.basename(src)
+                        if len(src) > 37 and src[36] == '_' and src[:8].isalnum():
+                            src = src[37:]
+                    citations.append({
+                        "source": src,
+                        "page": meta.get("page", 1),
+                        "score": d.get("score"),
+                        "text": d.get("text", "")[:300]
+                    })
+
+                if citations:
+                    state["citations"] = citations
             except Exception as e:
                 errors = state.get("errors", [])
                 errors.append(f"RAG Error: {str(e)}")
@@ -109,28 +132,53 @@ class AgentWorkflow:
 
     def execution_node(self, state: AgentState) -> AgentState:
         if state.get("errors") or not state.get("selected_model"):
-            return state # Skip if errors
+            return state  # Skip if errors
 
         # If vision returned a response, use it and skip general text inference
         if state.get("vision_results") and "response" in state["vision_results"]:
             state["response"] = state["vision_results"]["response"]
             return state
 
-        prompt = state["task"]
+        # Prepare context / citations
+        context_parts = []
         if state.get("retrieved_context"):
-            prompt += f"\nContext: {state['retrieved_context']}"
+            context_parts.append(f"Context: {state['retrieved_context']}")
+
         if state.get("tool_results"):
-            prompt += f"\nTool Results: {state['tool_results']}"
-            
-        try:
-            response = self.ai_client.generate(prompt=prompt, model=state["selected_model"])
-            state["response"] = response.get("response", str(response))
-        except Exception as e:
-            errors = state.get("errors", [])
-            errors.append(str(e))
-            state["errors"] = errors
-            
+            context_parts.append(f"Tool Results: {state['tool_results']}")
+
+        # Multi-turn messages vs single task
+        if state.get("messages"):
+            chat_messages = list(state["messages"])
+            if context_parts:
+                sys_content = "\n\n".join(context_parts)
+                # Check if first message is already system prompt
+                if chat_messages and chat_messages[0].get("role") == "system":
+                    chat_messages[0]["content"] += f"\n\n{sys_content}"
+                else:
+                    chat_messages.insert(0, {"role": "system", "content": sys_content})
+            try:
+                chat_res = self.ai_client.chat(messages=chat_messages, model=state["selected_model"])
+                msg = chat_res.get("message", {})
+                state["response"] = msg.get("content") or chat_res.get("response", str(chat_res))
+            except Exception as e:
+                errors = state.get("errors", [])
+                errors.append(str(e))
+                state["errors"] = errors
+        else:
+            prompt = state["task"]
+            if context_parts:
+                prompt = f"{prompt}\n\n" + "\n\n".join(context_parts)
+            try:
+                response = self.ai_client.generate(prompt=prompt, model=state["selected_model"])
+                state["response"] = response.get("response", str(response))
+            except Exception as e:
+                errors = state.get("errors", [])
+                errors.append(str(e))
+                state["errors"] = errors
+
         return state
+
 
     def verification_node(self, state: AgentState) -> AgentState:
         if self.verifier:

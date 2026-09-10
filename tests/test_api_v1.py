@@ -17,8 +17,16 @@ class TestAPIv1(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
+        from backend.db.session import get_engine
+        try:
+            get_engine().dispose()
+        except Exception:
+            pass
         if os.path.exists("test_v1_sovereign.db"):
-            os.remove("test_v1_sovereign.db")
+            try:
+                os.remove("test_v1_sovereign.db")
+            except PermissionError:
+                pass
 
     def setUp(self):
         # Clear database between tests

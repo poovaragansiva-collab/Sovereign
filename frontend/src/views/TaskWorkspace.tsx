@@ -8,7 +8,7 @@ interface Props {
 }
 
 type Capability = 'general' | 'reasoning' | 'coding' | 'vision';
-type OutputFormat = 'markdown' | 'txt' | 'json' | 'pdf' | 'docx' | 'xlsx';
+type OutputFormat = 'markdown' | 'txt' | 'json' | 'pdf' | 'docx' | 'xlsx' | 'pptx';
 
 interface Intelligence {
   capability: string;
@@ -41,6 +41,7 @@ const FORMATS: { id: OutputFormat; label: string }[] = [
   { id: 'json', label: 'JSON (.json)' },
   { id: 'pdf', label: 'PDF Document' },
   { id: 'docx', label: 'Word (.docx)' },
+  { id: 'pptx', label: 'PowerPoint (.pptx)' },
   { id: 'xlsx', label: 'Excel (.xlsx)' },
 ];
 
