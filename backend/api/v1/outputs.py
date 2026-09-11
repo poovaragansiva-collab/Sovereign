@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
 from backend.db.session import get_db
-from backend.db.models import Output, AuditLog
+from backend.db.models import Output, AuditLog, User
+from backend.core.deps import get_current_user
 from outputs.pdf import PDFOutputGenerator
 from outputs.docx import DOCXOutputGenerator
 from outputs.xlsx import XLSXOutputGenerator
@@ -29,9 +30,9 @@ class GenerateOutputRequest(BaseModel):
     conversation_id: Optional[str] = None
 
 @router.get("/")
-def list_outputs(db: Session = Depends(get_db)):
+def list_outputs(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """List all generated outputs."""
-    db_outputs = db.query(Output).order_by(desc(Output.created_at)).all()
+    db_outputs = db.query(Output).filter(Output.user_id == current_user.id).order_by(desc(Output.created_at)).all()
     results = []
     for o in db_outputs:
         f_size = o.file_size
@@ -49,7 +50,7 @@ def list_outputs(db: Session = Depends(get_db)):
     return {"outputs": results}
 
 @router.post("/generate")
-def generate_output(req: GenerateOutputRequest, db: Session = Depends(get_db)):
+def generate_output(req: GenerateOutputRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Generate a downloadable output file in the specified format."""
     fmt = req.format.lower()
     clean_title = "".join(c for c in req.title if c.isalnum() or c in (" ", "_", "-")).rstrip()
@@ -90,6 +91,7 @@ def generate_output(req: GenerateOutputRequest, db: Session = Depends(get_db)):
     f_size = os.path.getsize(target_path) if os.path.exists(target_path) else 0
 
     record = Output(
+        user_id=current_user.id,
         filename=final_filename,
         file_path=target_path,
         format=fmt,
@@ -100,7 +102,10 @@ def generate_output(req: GenerateOutputRequest, db: Session = Depends(get_db)):
     db.add(record)
     
     audit = AuditLog(
+        actor_user_id=current_user.id,
         action="OUTPUT_GENERATED",
+        resource_type="output",
+        resource_id=record.id,
         details=f"Generated {fmt.upper()} output '{final_filename}' ({f_size} bytes)"
     )
     db.add(audit)
@@ -118,9 +123,9 @@ def generate_output(req: GenerateOutputRequest, db: Session = Depends(get_db)):
     }
 
 @router.get("/{output_id}/download")
-def download_output(output_id: int, db: Session = Depends(get_db)):
+def download_output(output_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Download an existing output file."""
-    record = db.query(Output).filter(Output.id == output_id).first()
+    record = db.query(Output).filter(Output.id == output_id, Output.user_id == current_user.id).first()
     if not record or not os.path.exists(record.file_path):
         raise HTTPException(status_code=404, detail="Output file not found on disk")
 

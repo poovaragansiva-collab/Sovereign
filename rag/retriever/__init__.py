@@ -13,7 +13,7 @@ class RAGRetriever:
         self.vectorstore = vectorstore
         self.embeddings = embeddings
 
-    def index_document(self, file_path: str, chunk_size: int = 1000, chunk_overlap: int = 200) -> Dict[str, Any]:
+    def index_document(self, file_path: str, user_id: str, chunk_size: int = 1000, chunk_overlap: int = 200) -> Dict[str, Any]:
         """Index any supported document (PDF, DOCX, TXT, image OCR) into the vector store."""
         docs = load_document(file_path)
         splitter = TextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
@@ -28,6 +28,9 @@ class RAGRetriever:
             self.vectorstore.delete_by_source(file_path)
             texts = [c["text"] for c in chunks]
             metadatas = [c["metadata"] for c in chunks]
+            for m in metadatas:
+                m["user_id"] = user_id
+
             # Generate local embeddings
             embedded = self.embeddings.embed_documents(texts)
             self.vectorstore.add_texts(texts, metadatas, embedded)
@@ -47,10 +50,10 @@ class RAGRetriever:
         """Purge all indexed document chunks."""
         self.vectorstore.clear()
 
-    def retrieve(self, query: str, k: int = 4) -> List[Dict[str, Any]]:
+    def retrieve(self, query: str, user_id: str, k: int = 4) -> List[Dict[str, Any]]:
         """Retrieve top-k relevant document chunks with similarity scores."""
         query_embedding = self.embeddings.embed_query(query)
-        results = self.vectorstore.similarity_search(query_embedding, k=k)
+        results = self.vectorstore.similarity_search(query_embedding, k=k, user_id=user_id)
         return results
 
     def get_stats(self) -> Dict[str, Any]:

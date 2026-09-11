@@ -26,6 +26,28 @@ app.add_middleware(
 def on_startup():
     init_database()
     init_legacy_db()
+    
+    # Bootstrap admin
+    from backend.db.session import SessionLocal
+    from backend.db.models import User
+    from backend.core.security import get_password_hash
+    db = SessionLocal()
+    admin_email = os.getenv("ADMIN_EMAIL", "admin@example.com")
+    admin_password = os.getenv("ADMIN_PASSWORD", "admin123")
+    admin = db.query(User).filter(User.email == admin_email).first()
+    if not admin:
+        admin_user = User(
+            username="admin",
+            email=admin_email,
+            password_hash=get_password_hash(admin_password),
+            display_name="System Administrator",
+            role="admin",
+            status="APPROVED",
+            is_active=True
+        )
+        db.add(admin_user)
+        db.commit()
+    db.close()
 
 # Mount API v1 endpoints
 app.include_router(api_v1_router, prefix="/api/v1")

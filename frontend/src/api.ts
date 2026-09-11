@@ -138,9 +138,15 @@ export interface RAGStatus {
   ocr_available: boolean;
 }
 
-async function request(url: string, options?: RequestInit) {
+async function request(url: string, options: RequestInit = {}) {
   try {
-    const res = await fetch(url, options);
+    const token = localStorage.getItem('sovereign_token');
+    const headers = new Headers(options.headers || {});
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+
+    const res = await fetch(url, { ...options, headers });
     if (!res.ok) {
       const body = await res.json().catch(() => ({ detail: res.statusText }));
       throw new Error(body.detail || `Request failed (${res.status}): ${res.statusText}`);
@@ -331,3 +337,13 @@ export const api = {
 
 export type { };
 
+
+export const authApi = {
+    login: (data: URLSearchParams) =>
+        request(`${API_BASE}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: data.toString()
+        }),
+    me: () => request(`${API_BASE}/auth/me`)
+};

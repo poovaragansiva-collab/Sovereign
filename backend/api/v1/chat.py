@@ -11,7 +11,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
 from backend.db.session import get_db
-from backend.db.models import Conversation, Message, AuditLog
+from backend.db.models import Conversation, Message, AuditLog, User
+from backend.core.deps import get_current_user
 from ai.execution import AIExecutionService
 from ai.router import ModelRouter
 from ai.inference.ollama_client import OllamaClient
@@ -46,7 +47,7 @@ PERSONAS = {
 }
 
 @router.post("/conversations")
-def create_conversation(req: CreateConversationRequest, db: Session = Depends(get_db)):
+def create_conversation(req: CreateConversationRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Create a new persistent multi-turn conversation."""
     cid = f"conv_{uuid.uuid4().hex[:12]}"
     
@@ -62,6 +63,7 @@ def create_conversation(req: CreateConversationRequest, db: Session = Depends(ge
 
     conv = Conversation(
         id=cid,
+        user_id=current_user.id,
         title=req.title or "New Conversation",
         selected_model=model,
         capability=req.capability or "general",
@@ -81,9 +83,9 @@ def create_conversation(req: CreateConversationRequest, db: Session = Depends(ge
     }
 
 @router.get("/conversations")
-def list_conversations(db: Session = Depends(get_db)):
+def list_conversations(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """List all conversations ordered by recent activity."""
-    convs = db.query(Conversation).order_by(desc(Conversation.updated_at)).all()
+    convs = db.query(Conversation).filter(Conversation.user_id == current_user.id).order_by(desc(Conversation.updated_at)).all()
     results = []
     for c in convs:
         last_msg = db.query(Message).filter(Message.conversation_id == c.id).order_by(desc(Message.created_at)).first()
@@ -100,9 +102,9 @@ def list_conversations(db: Session = Depends(get_db)):
     return {"conversations": results}
 
 @router.get("/conversations/{conversation_id}")
-def get_conversation(conversation_id: str, db: Session = Depends(get_db)):
+def get_conversation(conversation_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Load conversation with its complete message history."""
-    conv = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+    conv = db.query(Conversation).filter(Conversation.id == conversation_id, Conversation.user_id == current_user.id).first()
     if not conv:
         raise HTTPException(status_code=404, detail="Conversation not found")
 
@@ -148,25 +150,34 @@ def get_conversation(conversation_id: str, db: Session = Depends(get_db)):
     }
 
 @router.delete("/conversations/{conversation_id}")
-def delete_conversation(conversation_id: str, db: Session = Depends(get_db)):
+def delete_conversation(conversation_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Delete a conversation and all associated turns."""
-    conv = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+    conv = db.query(Conversation).filter(Conversation.id == conversation_id, Conversation.user_id == current_user.id).first()
     if not conv:
         raise HTTPException(status_code=404, detail="Conversation not found")
     
     title = conv.title
     db.delete(conv)
+    
+    audit = AuditLog(
+        actor_user_id=current_user.id,
+        action="CHAT_DELETED",
+        resource_type="conversation",
+        resource_id=conversation_id,
+        details=f"Deleted conversation '{title}'"
+    )
+    db.add(audit)
     db.commit()
 
     return {"status": "success", "message": f"Conversation '{title}' deleted"}
 
 @router.post("/conversations/{conversation_id}/messages")
-def send_message(conversation_id: str, req: SendMessageRequest, db: Session = Depends(get_db)):
+def send_message(conversation_id: str, req: SendMessageRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Send a message in a multi-turn conversation.
     Executes LangGraph agent workflow with persistent history, RAG context, and citations.
     """
-    conv = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+    conv = db.query(Conversation).filter(Conversation.id == conversation_id, Conversation.user_id == current_user.id).first()
     if not conv:
         raise HTTPException(status_code=404, detail="Conversation not found")
 
@@ -232,7 +243,7 @@ def send_message(conversation_id: str, req: SendMessageRequest, db: Session = De
     if req.rag_enabled:
         try:
             retriever = get_rag_retriever()
-            raw_docs = retriever.retrieve(query=content, k=4)
+            raw_docs = retriever.retrieve(query=content, user_id=current_user.id, k=4)
             for d in raw_docs:
                 meta = d.get("metadata", {})
                 src = os.path.basename(str(meta.get("source", "Document")))
@@ -307,12 +318,13 @@ def stream_conversation_turn(
     conversation_id: str,
     prompt: str = Query(...),
     model: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Stream chat response tokens using Server-Sent Events (SSE).
     """
-    conv = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+    conv = db.query(Conversation).filter(Conversation.id == conversation_id, Conversation.user_id == current_user.id).first()
     if not conv:
         raise HTTPException(status_code=404, detail="Conversation not found")
 
@@ -344,9 +356,9 @@ def stream_conversation_turn(
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 @router.post("/conversations/{conversation_id}/export")
-def export_conversation(conversation_id: str, req: ExportConversationRequest, db: Session = Depends(get_db)):
+def export_conversation(conversation_id: str, req: ExportConversationRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Export conversation into Markdown, JSON, or TXT."""
-    conv = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+    conv = db.query(Conversation).filter(Conversation.id == conversation_id, Conversation.user_id == current_user.id).first()
     if not conv:
         raise HTTPException(status_code=404, detail="Conversation not found")
 

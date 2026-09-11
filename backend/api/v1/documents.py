@@ -6,7 +6,8 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from backend.db.session import get_db
-from backend.db.models import Document, AuditLog
+from backend.db.models import Document, AuditLog, User
+from backend.core.deps import get_current_user
 
 router = APIRouter()
 
@@ -22,7 +23,7 @@ def _is_safe_path(base_dir: str, path: str) -> bool:
         return False
 
 @router.post("/upload")
-async def upload_document(file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def upload_document(file: UploadFile = File(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     safe_filename = os.path.basename(file.filename)
     if not safe_filename or safe_filename in [".", ".."]:
         safe_filename = "unnamed_document.bin"
@@ -50,7 +51,7 @@ async def upload_document(file: UploadFile = File(...), db: Session = Depends(ge
     try:
         from backend.api.v1.rag import get_rag_retriever
         retriever = get_rag_retriever()
-        idx_res = retriever.index_document(target_path)
+        idx_res = retriever.index_document(target_path, user_id=current_user.id)
         chunks_count = idx_res.get("chunks_count", 0)
         page_count = idx_res.get("page_count", 1)
         ocr_applied = idx_res.get("ocr_applied", False)
@@ -58,6 +59,8 @@ async def upload_document(file: UploadFile = File(...), db: Session = Depends(ge
         index_status = "failed"
 
     doc_record = Document(
+        id=str(uuid.uuid4()),
+        user_id=current_user.id,
         filename=safe_filename,
         file_path=target_path,
         mime_type=file.content_type,
@@ -71,7 +74,10 @@ async def upload_document(file: UploadFile = File(...), db: Session = Depends(ge
     db.add(doc_record)
     
     audit = AuditLog(
+        actor_user_id=current_user.id,
         action="DOCUMENT_UPLOADED",
+        resource_type="document",
+        resource_id=doc_record.id,
         details=f"Uploaded and indexed '{safe_filename}' ({file_size} bytes, {chunks_count} chunks, {page_count} pages, OCR: {ocr_applied})"
     )
     db.add(audit)
@@ -93,8 +99,8 @@ async def upload_document(file: UploadFile = File(...), db: Session = Depends(ge
     }
 
 @router.get("/")
-def list_documents(query: Optional[str] = Query(None), db: Session = Depends(get_db)):
-    q = db.query(Document)
+def list_documents(query: Optional[str] = Query(None), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    q = db.query(Document).filter(Document.user_id == current_user.id)
     if query:
         q = q.filter(Document.filename.ilike(f"%{query}%"))
     
@@ -120,8 +126,8 @@ def list_documents(query: Optional[str] = Query(None), db: Session = Depends(get
     }
 
 @router.get("/{document_id}")
-def get_document(document_id: int, db: Session = Depends(get_db)):
-    doc = db.query(Document).filter(Document.id == document_id).first()
+def get_document(document_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    doc = db.query(Document).filter(Document.id == document_id, Document.user_id == current_user.id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     return {
@@ -140,8 +146,8 @@ def get_document(document_id: int, db: Session = Depends(get_db)):
 
 
 @router.delete("/{document_id}")
-def delete_document(document_id: int, db: Session = Depends(get_db)):
-    doc = db.query(Document).filter(Document.id == document_id).first()
+def delete_document(document_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    doc = db.query(Document).filter(Document.id == document_id, Document.user_id == current_user.id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     
@@ -163,7 +169,10 @@ def delete_document(document_id: int, db: Session = Depends(get_db)):
     db.delete(doc)
 
     audit = AuditLog(
+        actor_user_id=current_user.id,
         action="DOCUMENT_DELETED",
+        resource_type="document",
+        resource_id=document_id,
         details=f"Deleted document '{filename}' (ID: {document_id})"
     )
     db.add(audit)

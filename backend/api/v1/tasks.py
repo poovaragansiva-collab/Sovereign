@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
 from backend.db.session import get_db
-from backend.db.models import Task, TaskFile, Output, AuditLog
+from backend.db.models import Task, TaskFile, Output, AuditLog, User
+from backend.core.deps import get_current_user
 from backend.services.task_intelligence import TaskIntelligenceService
 from backend.api.v1.models import sync_sovereign_models_env
 from ai.execution_contract import AITaskInput
@@ -33,7 +34,7 @@ class TaskExecuteDirectRequest(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 @router.post("/")
-def create_task(req: CreateTaskRequest, db: Session = Depends(get_db)):
+def create_task(req: CreateTaskRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Create a new AI task in PostgreSQL with Task Intelligence pre-analysis."""
     analysis = task_intelligence.analyze(
         task=req.task,
@@ -52,6 +53,7 @@ def create_task(req: CreateTaskRequest, db: Session = Depends(get_db)):
 
     db_task = Task(
         task_id=task_id,
+        user_id=current_user.id,
         task=req.task,
         task_type=analysis.task_type,
         capability=analysis.capability,
@@ -70,8 +72,10 @@ def create_task(req: CreateTaskRequest, db: Session = Depends(get_db)):
 
     # Audit log
     audit = AuditLog(
-        task_id=task_id,
+        actor_user_id=current_user.id,
         action="TASK_CREATED",
+        resource_type="task",
+        resource_id=task_id,
         details=f"Created task '{req.task[:50]}' (capability: {analysis.capability})"
     )
     db.add(audit)
@@ -89,9 +93,9 @@ def create_task(req: CreateTaskRequest, db: Session = Depends(get_db)):
     }
 
 @router.post("/{task_id}/execute")
-def execute_task_by_id(task_id: str, db: Session = Depends(get_db)):
+def execute_task_by_id(task_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Execute an existing task through the AI Engine."""
-    db_task = db.query(Task).filter(Task.task_id == task_id).first()
+    db_task = db.query(Task).filter(Task.task_id == task_id, Task.user_id == current_user.id).first()
     if not db_task:
         raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
 
@@ -153,8 +157,10 @@ def execute_task_by_id(task_id: str, db: Session = Depends(get_db)):
 
         # Audit log
         audit = AuditLog(
-            task_id=task_id,
+            actor_user_id=current_user.id,
             action="TASK_EXECUTED",
+            resource_type="task",
+            resource_id=task_id,
             details=f"Task completed with status '{output.status.value}' using model '{output.model_used}'"
         )
         db.add(audit)
@@ -169,7 +175,7 @@ def execute_task_by_id(task_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Execution error: {str(e)}")
 
 @router.post("/execute")
-def execute_task_direct(req: TaskExecuteDirectRequest, db: Session = Depends(get_db)):
+def execute_task_direct(req: TaskExecuteDirectRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Convenience endpoint: create and immediately execute task."""
     # 1. Run Task Intelligence
     analysis = task_intelligence.analyze(
@@ -188,6 +194,7 @@ def execute_task_direct(req: TaskExecuteDirectRequest, db: Session = Depends(get
     # 3. Create DB record
     db_task = Task(
         task_id=task_id,
+        user_id=current_user.id,
         task=req.task,
         task_type=analysis.task_type,
         capability=analysis.capability,
@@ -242,8 +249,10 @@ def execute_task_direct(req: TaskExecuteDirectRequest, db: Session = Depends(get
             ))
 
         db.add(AuditLog(
-            task_id=task_id,
+            actor_user_id=current_user.id,
             action="TASK_EXECUTED",
+            resource_type="task",
+            resource_id=task_id,
             details=f"Direct task executed with status '{output.status.value}' (model: {output.model_used})"
         ))
         db.commit()
@@ -261,10 +270,11 @@ def list_tasks(
     status: Optional[str] = Query(None),
     capability: Optional[str] = Query(None),
     limit: int = Query(50, ge=1, le=100),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Retrieve list of tasks with optional filters."""
-    q = db.query(Task)
+    q = db.query(Task).filter(Task.user_id == current_user.id)
     if status:
         q = q.filter(Task.status == status)
     if capability:
@@ -292,9 +302,9 @@ def list_tasks(
     }
 
 @router.get("/{task_id}")
-def get_task_details(task_id: str, db: Session = Depends(get_db)):
+def get_task_details(task_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Retrieve comprehensive task details including files, outputs, and verification."""
-    db_task = db.query(Task).filter(Task.task_id == task_id).first()
+    db_task = db.query(Task).filter(Task.task_id == task_id, Task.user_id == current_user.id).first()
     if not db_task:
         raise HTTPException(status_code=404, detail="Task not found")
 
@@ -328,16 +338,18 @@ def get_task_details(task_id: str, db: Session = Depends(get_db)):
     }
 
 @router.delete("/{task_id}")
-def delete_task(task_id: str, db: Session = Depends(get_db)):
+def delete_task(task_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Delete a task and its associated files and outputs."""
-    db_task = db.query(Task).filter(Task.task_id == task_id).first()
+    db_task = db.query(Task).filter(Task.task_id == task_id, Task.user_id == current_user.id).first()
     if not db_task:
         raise HTTPException(status_code=404, detail="Task not found")
 
     db.delete(db_task)
     db.add(AuditLog(
-        task_id=task_id,
+        actor_user_id=current_user.id,
         action="TASK_DELETED",
+        resource_type="task",
+        resource_id=task_id,
         details=f"Deleted task {task_id}"
     ))
     db.commit()
