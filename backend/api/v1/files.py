@@ -22,8 +22,12 @@ def _is_safe_path(base_dir: str, path: str) -> bool:
     except Exception:
         return False
 
+from backend.core.deps import get_current_user
+from backend.db.models import User
+from fastapi import Depends
+
 @router.post("/upload")
-async def upload_task_file(file: UploadFile = File(...)):
+async def upload_task_file(file: UploadFile = File(...), current_user: User = Depends(get_current_user)):
     # Sanitize filename
     safe_filename = os.path.basename(file.filename)
     if not safe_filename or safe_filename in [".", ".."]:
@@ -54,7 +58,7 @@ async def upload_task_file(file: UploadFile = File(...)):
     }
 
 @router.get("/{file_id}/download")
-async def download_file(file_id: str, format: str = "txt"):
+async def download_file(file_id: str, format: str = "txt", current_user: User = Depends(get_current_user)):
     safe_id = os.path.basename(file_id)
     safe_format = os.path.basename(format)
     file_with_ext = f"{safe_id}.{safe_format}" if not safe_id.endswith(f".{safe_format}") else safe_id

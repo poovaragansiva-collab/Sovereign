@@ -1,0 +1,138 @@
+warning: in the working copy of '.env.example', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/api/v1/chat.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/api/v1/outputs.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/api/v1/rag.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/db/models.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docker-compose.yml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/index.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/package-lock.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/package.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/App.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/api.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/index.css', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/main.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/views/ChatWorkspace.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/vite.config.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'rag/retriever/__init__.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'rag/vectorstore/__init__.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'requirements.txt', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/.env.example b/.env.example[m
+[1mindex cbd2214..2de80c8 100644[m
+[1m--- a/.env.example[m
+[1m+++ b/.env.example[m
+[36m@@ -1,8 +1,17 @@[m
+ # SOVEREIGN - Local AI Workbench[m
+ # Environment Configuration[m
+ [m
+[31m-# Base URL for local Ollama instance (default: http://localhost:11434)[m
+[31m-OLLAMA_HOST=http://localhost:11434[m
+[32m+[m[32m# Database Configuration[m
+[32m+[m[32mPOSTGRES_USER=sovereign[m
+[32m+[m[32mPOSTGRES_PASSWORD=sovereign_pass[m
+[32m+[m[32mPOSTGRES_DB=sovereign_db[m
+[32m+[m
+[32m+[m[32m# Security[m
+[32m+[m[32mJWT_SECRET=super-secret-key-change-in-production[m
+ [m
+[31m-# Path to the SQLite configuration database (default: sovereign.db)[m
+[31m-# DB_FILE=sovereign.db[m
+[32m+[m[32m# Admin Bootstrap[m
+[32m+[m[32mADMIN_EMAIL=admin@example.com[m
+[32m+[m[32mADMIN_PASSWORD=admin123[m
+[32m+[m
+[32m+[m[32m# Base URL for local Ollama instance[m
+[32m+[m[32mOLLAMA_HOST=http://localhost:11434[m
+[1mdiff --git a/backend/api/v1/__init__.py b/backend/api/v1/__init__.py[m
+[1mindex f3b7d3b..5b3b0f4 100644[m
+[1m--- a/backend/api/v1/__init__.py[m
+[1m+++ b/backend/api/v1/__init__.py[m
+[36m@@ -11,8 +11,12 @@[m [mfrom backend.api.v1.rag import router as rag_router[m
+ from backend.api.v1.plugins import router as plugins_router[m
+ from backend.api.v1.outputs import router as outputs_router[m
+ [m
+[32m+[m[32mfrom backend.api.v1.auth import router as auth_router[m
+[32m+[m[32mfrom backend.api.v1.admin import router as admin_router[m
+[32m+[m
+ router = APIRouter()[m
+ [m
+[32m+[m[32mrouter.include_router(auth_router, prefix="/auth", tags=["auth"])[m
+ router.include_router(health_router, tags=["health"])[m
+ router.include_router(dashboard_router, prefix="/dashboard", tags=["dashboard"])[m
+ router.include_router(chat_router, prefix="/chat", tags=["chat"])[m
+[36m@@ -24,4 +28,5 @@[m [mrouter.include_router(plugins_router, prefix="/plugins", tags=["plugins"])[m
+ router.include_router(outputs_router, prefix="/outputs", tags=["outputs"])[m
+ router.include_router(files_router, prefix="/files", tags=["files"])[m
+ router.include_router(audit_logs_router, prefix="/audit-logs", tags=["audit-logs"])[m
+[32m+[m[32mrouter.include_router(admin_router, prefix="/admin", tags=["admin"])[m
+ [m
+[1mdiff --git a/backend/api/v1/audit_logs.py b/backend/api/v1/audit_logs.py[m
+[1mindex fe75e7a..4b7dbc9 100644[m
+[1m--- a/backend/api/v1/audit_logs.py[m
+[1m+++ b/backend/api/v1/audit_logs.py[m
+[36m@@ -3,12 +3,13 @@[m [mfrom fastapi import APIRouter, Depends, Query[m
+ from sqlalchemy.orm import Session[m
+ from sqlalchemy import desc[m
+ from backend.db.session import get_db[m
+[31m-from backend.db.models import AuditLog[m
+[32m+[m[32mfrom backend.db.models import AuditLog, User[m
+[32m+[m[32mfrom backend.core.deps import get_current_active_admin[m
+ [m
+ router = APIRouter()[m
+ [m
+ @router.get("/")[m
+[31m-def list_audit_logs(limit: int = Query(50, ge=1, le=200), db: Session = Depends(get_db)):[m
+[32m+[m[32mdef list_audit_logs(limit: int = Query(50, ge=1, le=200), db: Session = Depends(get_db), current_admin: User = Depends(get_current_active_admin)):[m
+     logs = ([m
+         db.query(AuditLog)[m
+         .order_by(desc(AuditLog.created_at))[m
+[1mdiff --git a/backend/api/v1/chat.py b/backend/api/v1/chat.py[m
+[1mindex ff652ab..f4587e4 100644[m
+[1m--- a/backend/api/v1/chat.py[m
+[1m+++ b/backend/api/v1/chat.py[m
+[36m@@ -11,7 +11,8 @@[m [mfrom sqlalchemy.orm import Session[m
+ from sqlalchemy import desc[m
+ [m
+ from backend.db.session import get_db[m
+[31m-from backend.db.models import Conversation, Message, AuditLog[m
+[32m+[m[32mfrom backend.db.models import Conversation, Message, AuditLog, User[m
+[32m+[m[32mfrom backend.core.deps import get_current_user[m
+ from ai.execution import AIExecutionService[m
+ from ai.router import ModelRouter[m
+ from ai.inference.ollama_client import OllamaClient[m
+[36m@@ -46,7 +47,7 @@[m [mPERSONAS = {[m
+ }[m
+ [m
+ @router.post("/conversations")[m
+[31m-def create_conversation(req: CreateConversationRequest, db: Session = Depends(get_db)):[m
+[32m+[m[32mdef create_conversation(req: CreateConversationRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):[m
+     """Create a new persistent multi-turn conversation."""[m
+     cid = f"conv_{uuid.uuid4().hex[:12]}"[m
+     [m
+[36m@@ -62,6 +63,7 @@[m [mdef create_conversation(req: CreateConversationRequest, db: Session = Depends(ge[m
+ [m
+     conv = Conversation([m
+         id=cid,[m
+[32m+[m[32m        user_id=current_user.id,[m
+         title=req.title or "New Conversation",[m
+         selected_model=model,[m
+         capability=req.capability or "general",[m
+[36m@@ -81,9 +83,9 @@[m [mdef create_conversation(req: CreateConversationRequest, db: Session = Depends(ge[m
+     }[m
+ [m
+ @router.get("/conversations")[m
+[31m-def list_conversations(db: Session = Depends(get_db)):[m
+[32m+[m[32mdef list_conversations(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):[m
+     """List all conversations ordered by recent activity."""[m
+[31m-    convs = db.query(Conversation).order_by(desc(Conversation.updated_at)).all()[m
+[32m+[m[32m    convs = db.query(Conversation).filter(Conversation.user_id == current_user.id).order_by(desc(Conversation.updated_at)).all()[m
+     results = [][m
+     for c in convs:[m
+         last_msg = db.query(Message).filter(Message.conversation_id == c.id).order_by(desc(Message.created_at)).first()[m
+[36m@@ -100,9 +102,9 @@[m [mdef list_conversations(db: Session = Depends(get_db)):[m
+     return {"conversations": results}[m
+ [m
+ @router.get("/conversations/{conversation_id}")[m
+[31m-def get_conversation(conversation_id: str, db: Session = Depends(get_db)):[m
+[32m+[m[32mdef get_conversation(conversation_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):[m
+     """Load conversation with its complete message history."""[m
+[31m-    conv = db.q

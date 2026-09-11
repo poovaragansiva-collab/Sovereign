@@ -1,33 +1,45 @@
 import datetime
+import uuid
 from sqlalchemy import Column, Integer, String, Text, Boolean, Float, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from backend.db.session import Base
 
+def generate_uuid():
+    return str(uuid.uuid4())
+
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    name = Column(String(255), nullable=False)
+    id = Column(String(36), primary_key=True, index=True, default=generate_uuid)
+    username = Column(String(255), unique=True, index=True, nullable=False)
     email = Column(String(255), unique=True, index=True, nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    display_name = Column(String(255), nullable=True)
     role = Column(String(50), default="user", nullable=False)  # "admin" or "user"
+    status = Column(String(50), default="PENDING", nullable=False) # PENDING, APPROVED, REJECTED, DISABLED
+    is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
+    last_login = Column(DateTime, nullable=True)
 
     tasks = relationship("Task", back_populates="user", cascade="all, delete-orphan")
     documents = relationship("Document", back_populates="user", cascade="all, delete-orphan")
-    audit_logs = relationship("AuditLog", back_populates="user")
+    audit_logs = relationship("AuditLog", back_populates="actor", foreign_keys="[AuditLog.actor_user_id]")
+    conversations = relationship("Conversation", back_populates="user", cascade="all, delete-orphan")
+    files = relationship("TaskFile", back_populates="user", cascade="all, delete-orphan")
+    outputs = relationship("Output", back_populates="user", cascade="all, delete-orphan")
 
 
 class Task(Base):
     __tablename__ = "tasks"
 
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    id = Column(String(36), primary_key=True, index=True, default=generate_uuid)
     task_id = Column(String(64), unique=True, index=True, nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     task = Column(Text, nullable=False)
     task_type = Column(String(100), default="general", nullable=False)
     capability = Column(String(100), default="general", nullable=False)
-    status = Column(String(50), default="queued", nullable=False)
+    status = Column(String(50), default="QUEUED", nullable=False) # QUEUED, RUNNING, COMPLETED, FAILED, CANCELLED
     model_used = Column(String(100), nullable=True)
     answer = Column(Text, nullable=True)
     verification_status = Column(String(50), nullable=True)
@@ -35,7 +47,9 @@ class Task(Base):
     error = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
+    started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
+    output_reference = Column(String(255), nullable=True)
 
     user = relationship("User", back_populates="tasks")
     files = relationship("TaskFile", back_populates="task", cascade="all, delete-orphan")
@@ -46,22 +60,26 @@ class Task(Base):
 class TaskFile(Base):
     __tablename__ = "task_files"
 
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    id = Column(String(36), primary_key=True, index=True, default=generate_uuid)
     task_id = Column(String(64), ForeignKey("tasks.task_id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     filename = Column(String(255), nullable=False)
     file_path = Column(String(1024), nullable=False)
     mime_type = Column(String(100), nullable=True)
     size = Column(Integer, default=0, nullable=False)
+    checksum = Column(String(255), nullable=True)
+    processing_status = Column(String(50), default="READY", nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
 
     task = relationship("Task", back_populates="files")
+    user = relationship("User", back_populates="files")
 
 
 class Document(Base):
     __tablename__ = "documents"
 
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    id = Column(String(36), primary_key=True, index=True, default=generate_uuid)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     filename = Column(String(255), nullable=False)
     file_path = Column(String(1024), nullable=False)
     mime_type = Column(String(100), nullable=True)
@@ -70,7 +88,8 @@ class Document(Base):
     chunks_count = Column(Integer, default=0, nullable=False)
     ocr_applied = Column(Boolean, default=False, nullable=False)
     page_count = Column(Integer, default=1, nullable=False)
-    status = Column(String(50), default="ready", nullable=False)  # "ready", "indexing", "failed"
+    status = Column(String(50), default="READY", nullable=False)  # UPLOADED, PROCESSING, READY, FAILED
+    checksum = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
 
@@ -80,7 +99,7 @@ class Document(Base):
 class ModelConfiguration(Base):
     __tablename__ = "model_configurations"
 
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    id = Column(String(36), primary_key=True, index=True, default=generate_uuid)
     model_name = Column(String(255), unique=True, index=True, nullable=False)
     capability = Column(String(100), nullable=False)  # "general", "reasoning", "coding", "vision", "embedding"
     enabled = Column(Boolean, default=True, nullable=False)
@@ -91,37 +110,43 @@ class ModelConfiguration(Base):
 class Output(Base):
     __tablename__ = "outputs"
 
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    id = Column(String(36), primary_key=True, index=True, default=generate_uuid)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     task_id = Column(String(64), ForeignKey("tasks.task_id", ondelete="SET NULL"), nullable=True)
     conversation_id = Column(String(64), ForeignKey("conversations.id", ondelete="SET NULL"), nullable=True)
     filename = Column(String(255), nullable=False)
     file_path = Column(String(1024), nullable=False)
-    format = Column(String(50), nullable=False)  # "pdf", "docx", "xlsx", "pptx", "json", "txt", "md"
+    format = Column(String(50), nullable=False)  # CODE, EXCEL, POWERPOINT, PDF, DOCX, TXT
     file_size = Column(Integer, default=0, nullable=False)
+    status = Column(String(50), default="COMPLETED", nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
 
     task = relationship("Task", back_populates="outputs")
     conversation = relationship("Conversation", back_populates="outputs")
+    user = relationship("User", back_populates="outputs")
 
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"
 
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    id = Column(String(36), primary_key=True, index=True, default=generate_uuid)
+    actor_user_id = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     task_id = Column(String(64), ForeignKey("tasks.task_id", ondelete="SET NULL"), nullable=True)
-    action = Column(String(100), nullable=False)  # TASK_CREATED, TASK_EXECUTED, MODEL_SELECTED, etc.
+    action = Column(String(100), nullable=False)  # LOGIN_SUCCESS, FILE_UPLOADED, etc.
+    resource_type = Column(String(100), nullable=True)
+    resource_id = Column(String(64), nullable=True)
     details = Column(Text, nullable=True)
+    ip_address = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
 
-    user = relationship("User", back_populates="audit_logs")
+    actor = relationship("User", back_populates="audit_logs", foreign_keys=[actor_user_id])
     task = relationship("Task", back_populates="audit_logs")
 
 
 class PluginConfig(Base):
     __tablename__ = "plugin_configurations"
 
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    id = Column(String(36), primary_key=True, index=True, default=generate_uuid)
     name = Column(String(100), unique=True, index=True, nullable=False)
     enabled = Column(Boolean, default=True, nullable=False)
     permissions_json = Column(Text, nullable=True)
@@ -133,7 +158,8 @@ class PluginConfig(Base):
 class Conversation(Base):
     __tablename__ = "conversations"
 
-    id = Column(String(64), primary_key=True, index=True)
+    id = Column(String(36), primary_key=True, index=True, default=generate_uuid)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     title = Column(String(255), default="New Conversation", nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
@@ -143,20 +169,21 @@ class Conversation(Base):
 
     messages = relationship("Message", back_populates="conversation", cascade="all, delete-orphan", order_by="Message.created_at")
     outputs = relationship("Output", back_populates="conversation")
+    user = relationship("User", back_populates="conversations")
 
 
 class Message(Base):
     __tablename__ = "messages"
 
-    id = Column(String(64), primary_key=True, index=True)
-    conversation_id = Column(String(64), ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False)
+    id = Column(String(36), primary_key=True, index=True, default=generate_uuid)
+    conversation_id = Column(String(36), ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False)
     role = Column(String(50), nullable=False)  # "user", "assistant", "system"
     content = Column(Text, nullable=False)
     model_used = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    token_usage_json = Column(Text, nullable=True)
     metadata_json = Column(Text, nullable=True)
     sources_json = Column(Text, nullable=True)
     verification_json = Column(Text, nullable=True)
 
     conversation = relationship("Conversation", back_populates="messages")
-

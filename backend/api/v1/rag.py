@@ -55,8 +55,11 @@ def get_rag_status(db: Session = Depends(get_db)):
         "ocr_available": True
     }
 
+from backend.core.deps import get_current_user
+from backend.db.models import User, Document, AuditLog
+
 @router.post("/test")
-def test_rag_retrieval(req: RAGQueryTestRequest):
+def test_rag_retrieval(req: RAGQueryTestRequest, current_user: User = Depends(get_current_user)):
     """
     RAG Sandbox query test:
     Retrieves chunks for a query and displays text, source, page, and similarity scores.
@@ -66,7 +69,7 @@ def test_rag_retrieval(req: RAGQueryTestRequest):
 
     retriever = get_rag_retriever()
     try:
-        raw_chunks = retriever.retrieve(query=req.query, k=req.k or 4)
+        raw_chunks = retriever.retrieve(query=req.query, user_id=current_user.id, k=req.k or 4)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Retrieval error: {str(e)}")
 
@@ -105,14 +108,14 @@ def test_rag_retrieval(req: RAGQueryTestRequest):
     }
 
 @router.post("/reindex")
-def reindex_documents(req: Optional[RAGReindexRequest] = None, db: Session = Depends(get_db)):
+def reindex_documents(req: Optional[RAGReindexRequest] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Reindex uploaded documents through the RAG pipeline."""
     retriever = get_rag_retriever()
 
     if req and req.reset:
         retriever.clear()
 
-    q = db.query(Document)
+    q = db.query(Document).filter(Document.user_id == current_user.id)
     if req and req.document_ids:
         q = q.filter(Document.id.in_(req.document_ids))
     docs = q.all()
@@ -128,7 +131,7 @@ def reindex_documents(req: Optional[RAGReindexRequest] = None, db: Session = Dep
             try:
                 doc.status = "indexing"
                 db.commit()
-                res = retriever.index_document(doc.file_path)
+                res = retriever.index_document(doc.file_path, user_id=current_user.id)
                 doc.indexed = True
                 doc.chunks_count = res.get("chunks_count", 0)
                 doc.page_count = res.get("page_count", 1)

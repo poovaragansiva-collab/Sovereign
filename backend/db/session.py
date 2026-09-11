@@ -9,10 +9,13 @@ _engine = None
 _SessionFactory = None
 
 def get_database_url() -> str:
-    db_url = os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URL")
+    db_url = os.getenv("DATABASE_URL")
     if not db_url:
-        db_path = os.getenv("SOVEREIGN_DB_PATH", "sovereign.db")
-        db_url = f"sqlite:///{db_path}"
+        pg_user = os.getenv("POSTGRES_USER", "sovereign")
+        pg_password = os.getenv("POSTGRES_PASSWORD", "sovereign_pass")
+        pg_db = os.getenv("POSTGRES_DB", "sovereign_db")
+        pg_host = os.getenv("POSTGRES_HOST", "postgres")
+        db_url = f"postgresql://{pg_user}:{pg_password}@{pg_host}:5432/{pg_db}"
     return db_url
 
 def get_engine():
@@ -41,6 +44,5 @@ def get_db():
         db.close()
 
 def init_db():
-    """Initializes all database tables with safe migrations."""
-    from backend.db.migrations import run_safe_migrations
-    run_safe_migrations()
+    """Initializes all database tables. Replaced by Alembic."""
+    pass

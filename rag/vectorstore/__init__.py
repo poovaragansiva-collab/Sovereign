@@ -67,7 +67,7 @@ class LocalVectorStore:
         except Exception as e:
             logger.warning(f"Error clearing collection '{self.collection_name}': {e}")
 
-    def similarity_search(self, query_embedding: List[float], k: int = 4) -> List[Dict[str, Any]]:
+    def similarity_search(self, query_embedding: List[float], k: int = 4, user_id: Optional[str] = None) -> List[Dict[str, Any]]:
         if self.collection.count() == 0:
             return []
 
@@ -81,10 +81,14 @@ class LocalVectorStore:
                 # Truncate to expected dimension
                 query_embedding = query_embedding[:expected_dim]
 
-        results = self.collection.query(
-            query_embeddings=[query_embedding],
-            n_results=k
-        )
+        kwargs = {
+            "query_embeddings": [query_embedding],
+            "n_results": k
+        }
+        if user_id:
+            kwargs["where"] = {"user_id": user_id}
+
+        results = self.collection.query(**kwargs)
         
         docs = []
         if results and results['documents'] and results['documents'][0]:
