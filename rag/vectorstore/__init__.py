@@ -97,6 +97,6 @@ class LocalVectorStore:
                     "id": results['ids'][0][i],
                     "text": results['documents'][0][i],
                     "metadata": results['metadatas'][0][i],
-                    "score": results['distances'][0][i] if 'distances' in results and results['distances'] else None
+                    "distance": results['distances'][0][i] if 'distances' in results and results['distances'] else None
                 })
         return docs

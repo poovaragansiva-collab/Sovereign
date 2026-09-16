@@ -21,6 +21,7 @@ def test_database_migrations_and_schema():
         # Create test conversation
         conv = Conversation(
             id="test_conv_123",
+            user_id="test_user",
             title="Migration Test Conversation",
             selected_model="gemma3:4b",
             capability="general"
@@ -53,16 +54,25 @@ def test_database_migrations_and_schema():
 
 def test_model_router_dynamic():
     """Test model routing logic with installed Ollama models and missing capabilities."""
-    router = ModelRouter()
-    # General route should find a model
-    gen_route = router.route("general")
-    assert "model" in gen_route
-    assert gen_route["capability"] == "general"
+    from unittest.mock import patch
+    with patch("ai.router.ModelRouter._get_live_ollama_models") as mock_live:
+        mock_live.return_value = [{"name": "gemma3:4b"}]
+        router = ModelRouter()
+        
+        # Override registry to simulate a general model
+        router.registry.list_models = lambda enabled_only: [
+            type("Model", (), {"name": "gemma3:4b", "type": "general"})()
+        ]
+        
+        # General route should find a model
+        gen_route = router.route("general")
+        assert "model" in gen_route
+        assert gen_route["capability"] == "general"
 
-    # Vision route should raise clear error when no vision model is installed
-    with pytest.raises(ModelRoutingError) as exc_info:
-        router.route("vision")
-    assert "Vision model not installed" in str(exc_info.value)
+        # Vision route should raise clear error when no vision model is installed
+        with pytest.raises(ModelRoutingError) as exc_info:
+            router.route("vision")
+        assert "Vision model not installed" in str(exc_info.value)
 
 def test_rag_text_and_chunking():
     """Test loading and chunking with page and chunk metadata."""

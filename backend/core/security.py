@@ -8,7 +8,10 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # 7 days
 
 def get_jwt_secret() -> str:
-    return os.getenv("JWT_SECRET", "super-secret-key-change-in-production")
+    secret = os.getenv("JWT_SECRET")
+    if not secret:
+        raise ValueError("JWT_SECRET environment variable is not set")
+    return secret
 
 def create_access_token(subject: Union[str, Any], expires_delta: timedelta = None) -> str:
     if expires_delta:

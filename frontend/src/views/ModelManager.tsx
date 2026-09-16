@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { api } from '../api';
 import type { ToastType } from '../components/ToastContainer';
 
@@ -77,7 +77,7 @@ export default function ModelManager({ addToast }: Props) {
     }
   };
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       setLoading(true);
       const res = await api.getModelsV1();
@@ -93,9 +93,10 @@ export default function ModelManager({ addToast }: Props) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [addToast]);
 
-  useEffect(() => { load(); }, []);
+  // eslint-disable-next-line
+  useEffect(() => { load(); }, [load]);
 
   const updateCap = (name: string, cap: string | null) => {
     setLocalConfig(prev => ({ ...prev, [name]: cap }));

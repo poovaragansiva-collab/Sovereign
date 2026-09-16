@@ -21,7 +21,7 @@ export interface ModelConfigItem {
 export interface Citation {
   source: string;
   page: number;
-  score?: number;
+  distance?: number;
   text: string;
 }
 
@@ -50,7 +50,7 @@ export interface Conversation {
 }
 
 export interface DocumentItem {
-  id: number;
+  id: string;
   filename: string;
   file_path: string;
   size: number;
@@ -65,20 +65,21 @@ export interface DocumentItem {
 }
 
 export interface TaskRecord {
-  id?: string;
   task_id: string;
   task: string;
   capability: string;
   status: string;
   task_type?: string;
   model_used: string | null;
-  result?: string;
   answer?: string;
-  created_at: string | null;
-  completed_at: string | null;
-  duration_seconds?: number;
+  error?: string;
+  created_time: string | null;
+  completed_time: string | null;
   verification?: { status: string; confidence: number };
-  files?: Array<{ filename: string; format: string }>;
+  verification_status?: string | null;
+  verification_confidence?: number | null;
+  files?: Array<{ id: string; filename: string; file_path: string; size: number }>;
+  outputs?: Array<{ id: string; filename: string; file_path: string; format: string }>;
 }
 
 export interface PluginItem {
@@ -91,7 +92,7 @@ export interface PluginItem {
 }
 
 export interface OutputItem {
-  id: number;
+  id: string;
   filename: string;
   format: string;
   file_path: string;
@@ -148,6 +149,10 @@ async function request(url: string, options: RequestInit = {}) {
 
     const res = await fetch(url, { ...options, headers });
     if (!res.ok) {
+      if (res.status === 401 || res.status === 403) {
+        localStorage.removeItem('sovereign_token');
+        window.location.reload();
+      }
       const body = await res.json().catch(() => ({ detail: res.statusText }));
       throw new Error(body.detail || `Request failed (${res.status}): ${res.statusText}`);
     }
@@ -240,7 +245,7 @@ export const api = {
     form.append('file', file);
     return request(`${LEGACY_API}/files/upload`, { method: 'POST', body: form });
   },
-  deleteDocument: (docId: number) =>
+  deleteDocument: (docId: string) =>
     request(`${API_BASE}/documents/${docId}`, { method: 'DELETE' }),
 
   // ── Audit Logs ─────────────────────────────────────
@@ -318,7 +323,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     }),
-  getOutputDownloadUrl: (outputId: number) => `${API_BASE}/outputs/${outputId}/download`,
+  getOutputDownloadUrl: (outputId: string) => `${API_BASE}/outputs/${outputId}/download`,
 
   // ── Models (Extended) ──────────────────────────────
   pullModel: (name: string) =>

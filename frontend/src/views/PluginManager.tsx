@@ -36,6 +36,7 @@ export default function PluginManager({ addToast }: Props) {
     }
   }, [addToast]);
 
+  // eslint-disable-next-line
   useEffect(() => {
     fetchPlugins();
   }, [fetchPlugins]);
@@ -79,7 +80,7 @@ export default function PluginManager({ addToast }: Props) {
       let params = {};
       try {
         params = JSON.parse(paramInput);
-      } catch (e) {
+      } catch {
         addToast('error', 'Invalid JSON in params input');
         setExecuting(false);
         return;
@@ -97,15 +98,15 @@ export default function PluginManager({ addToast }: Props) {
   };
 
   return (
-    <div className="view-container">
-      <div className="view-header">
+    <div>
+      <div className="section-header mb-4">
         <div>
-          <h2>Local Plugin Architecture & Sandboxed Extensions</h2>
-          <p className="view-desc">
+          <div className="section-title">Local Plugin Architecture & Sandboxed Extensions</div>
+          <div className="section-sub">
             All plugins run strictly within host boundaries with declared permissions. Undeclared access is rejected by default.
-          </p>
+          </div>
         </div>
-        <button className="btn-secondary" onClick={fetchPlugins} disabled={loading}>
+        <button className="btn btn-secondary" onClick={fetchPlugins} disabled={loading}>
           🔄 Refresh Plugins
         </button>
       </div>
@@ -147,7 +148,7 @@ export default function PluginManager({ addToast }: Props) {
 
             <div className="plugin-card-footer">
               <button
-                className="btn-secondary btn-sm"
+                className="btn btn-secondary btn-sm"
                 disabled={!p.enabled}
                 onClick={() => handleOpenRunner(p)}
               >
@@ -192,8 +193,8 @@ export default function PluginManager({ addToast }: Props) {
               </div>
 
               <div className="modal-actions">
-                <button className="btn-secondary" onClick={() => setSelectedPlugin(null)}>Cancel</button>
-                <button className="btn-primary" onClick={handleExecute} disabled={executing}>
+                <button className="btn btn-secondary" onClick={() => setSelectedPlugin(null)}>Cancel</button>
+                <button className="btn btn-primary" onClick={handleExecute} disabled={executing}>
                   {executing ? 'Executing...' : 'Execute Action'}
                 </button>
               </div>

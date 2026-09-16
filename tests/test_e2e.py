@@ -19,7 +19,7 @@ class FakeLocalEmbeddings:
 class FakeLocalVectorStore:
     def __init__(self, *args, **kwargs):
         pass
-    def similarity_search(self, query_embedding, k=4):
+    def similarity_search(self, query_embedding, k=4, user_id=None):
         return [{"page_content": "Deterministic test context.", "metadata": {"source": "fake_doc.txt"}}]
     def add_texts(self, texts, metadatas, embeddings):
         pass

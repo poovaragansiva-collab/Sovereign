@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { api } from '../api';
 import type { ToastType } from '../components/ToastContainer';
 
@@ -7,7 +7,7 @@ interface Props {
 }
 
 interface Doc {
-  id: number;
+  id: string;
   filename: string;
   file_path: string;
   size: number;
@@ -45,11 +45,11 @@ export default function DocumentManager({ addToast }: Props) {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [search, setSearch] = useState('');
-  const [deleting, setDeleting] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const loadDocs = async (q?: string) => {
+  const loadDocs = useCallback(async (q?: string) => {
     try {
       setLoading(true);
       const res = await api.listDocuments(q);
@@ -59,9 +59,9 @@ export default function DocumentManager({ addToast }: Props) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [addToast]);
 
-  useEffect(() => { loadDocs(); }, []);
+  useEffect(() => { loadDocs(); }, [loadDocs]);
 
   const uploadFiles = async (files: FileList | File[]) => {
     const arr = Array.from(files);
@@ -93,7 +93,7 @@ export default function DocumentManager({ addToast }: Props) {
     uploadFiles(e.dataTransfer.files);
   };
 
-  const deleteDoc = async (id: number, filename: string) => {
+  const deleteDoc = async (id: string, filename: string) => {
     if (!confirm(`Delete "${filename}"?`)) return;
     setDeleting(id);
     try {

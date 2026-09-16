@@ -9,7 +9,7 @@ interface Props {
 interface Citation {
   source: string;
   page: number;
-  score?: number;
+  distance?: number;
   text: string;
 }
 
@@ -92,6 +92,7 @@ function MarkdownView({ content, onCopy }: { content: string; onCopy?: (text: st
 }
 
 export default function ChatWorkspace({ addToast }: Props) {
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -114,6 +115,7 @@ export default function ChatWorkspace({ addToast }: Props) {
     } catch { }
   }, []);
 
+  // eslint-disable-next-line
   useEffect(() => {
     loadModels();
   }, [loadModels]);
@@ -131,22 +133,23 @@ export default function ChatWorkspace({ addToast }: Props) {
     setLoading(true);
 
     try {
-      // Assuming a generic chat endpoint or handling mock
-      const res = await api.createConversation({ title: 'New chat' }).catch(() => ({ id: 'mock-id' }));
-      const msgRes = await api.sendMessage(res.id, {
+      let currentConvId = conversationId;
+      if (!currentConvId) {
+        const res = await api.createConversation({ title: text.substring(0, 30) });
+        currentConvId = res.id;
+        setConversationId(currentConvId);
+      }
+
+      const msgRes = await api.sendMessage(currentConvId!, {
         content: text,
         rag_enabled: ragEnabled,
         model: selectedModel,
-      }).catch(() => ({
-        message_id: 'mock-msg',
-        content: "This is a local response simulation. The backend API is not fully configured for this endpoint yet.\n\n### Generated Outputs\n\n- refinery_analysis.xlsx\n\n```python\nprint('Local processing complete')\n```",
-        sources: [{ source: 'company_policy.pdf', page: 7, text: 'Keep data secure' }]
-      }));
+      });
 
       setMessages(prev => [...prev, {
-        id: msgRes.message_id || Date.now().toString(),
+        id: msgRes.id || Date.now().toString(),
         role: 'assistant',
-        content: msgRes.content,
+        content: msgRes.content || "Empty response from model.",
         sources: msgRes.sources,
       }]);
 
@@ -172,7 +175,7 @@ export default function ChatWorkspace({ addToast }: Props) {
             
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '600px' }}>
               {['Analyze a document', 'Search company knowledge', 'Summarize research', 'Generate a report', 'Write code'].map(suggestion => (
-                <button key={suggestion} onClick={() => setInput(suggestion)} style={{ padding: '8px 16px', border: '1px solid var(--border-structural)', borderRadius: 'var(--radius-md)', background: 'var(--surface)', color: 'var(--text-secondary)', fontSize: '13px', cursor: 'pointer' }}>
+                <button key={suggestion} onClick={() => setInput(suggestion)} className="btn-secondary">
                   {suggestion}
                 </button>
               ))}

@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from backend.db.session import get_db
 from backend.db.models import ModelConfiguration, AuditLog
+from backend.core.deps import get_current_active_admin
 from ai.config import get_ollama_base_url
 
 router = APIRouter()
@@ -94,7 +95,7 @@ def get_model_config(db: Session = Depends(get_db)):
     }
 
 @router.post("/config")
-def save_model_config(req: ModelConfigRequest, db: Session = Depends(get_db)):
+def save_model_config(req: ModelConfigRequest, db: Session = Depends(get_db), admin=Depends(get_current_active_admin)):
     """Update model purpose configurations in the database."""
     valid_capabilities = ["general", "reasoning", "coding", "vision", "embedding"]
 
@@ -138,7 +139,7 @@ class PullModelRequest(BaseModel):
     name: str
 
 @router.post("/pull")
-def pull_model(req: PullModelRequest, db: Session = Depends(get_db)):
+def pull_model(req: PullModelRequest, db: Session = Depends(get_db), admin=Depends(get_current_active_admin)):
     """Pull a model directly into Ollama."""
     base_url = get_ollama_base_url()
     try:
@@ -157,7 +158,7 @@ def pull_model(req: PullModelRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Failed to pull model: {str(e)}")
 
 @router.delete("/{model_name}")
-def delete_model(model_name: str, db: Session = Depends(get_db)):
+def delete_model(model_name: str, db: Session = Depends(get_db), admin=Depends(get_current_active_admin)):
     """Delete a model from local Ollama and remove its DB configuration."""
     base_url = get_ollama_base_url()
     try:

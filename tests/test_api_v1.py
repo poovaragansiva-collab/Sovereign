@@ -7,12 +7,18 @@ from fastapi.testclient import TestClient
 
 from backend.main import app
 from backend.db import init_db, SessionLocal, Task, Document, ModelConfiguration, AuditLog
+from backend.core.deps import get_current_user, get_current_active_admin
 
 class TestAPIv1(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         os.environ["SOVEREIGN_DB_PATH"] = "test_v1_sovereign.db"
         init_db()
+        
+        # Override auth dependencies
+        app.dependency_overrides[get_current_user] = lambda: type("User", (), {"id": "test_user_id"})()
+        app.dependency_overrides[get_current_active_admin] = lambda: type("User", (), {"id": "test_admin_id", "is_admin": True})()
+        
         cls.client = TestClient(app)
 
     @classmethod

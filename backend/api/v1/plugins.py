@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from backend.db.session import get_db
 from backend.db.models import AuditLog
+from backend.core.deps import get_current_active_admin
 from plugins.manager import get_plugin_manager
 
 router = APIRouter()
@@ -22,7 +23,7 @@ def list_plugins():
     return {"plugins": pm.list_plugins()}
 
 @router.post("/{name}/toggle")
-def toggle_plugin(name: str, req: TogglePluginRequest, db: Session = Depends(get_db)):
+def toggle_plugin(name: str, req: TogglePluginRequest, db: Session = Depends(get_db), admin = Depends(get_current_active_admin)):
     """Enable or disable a plugin with audit logging."""
     pm = get_plugin_manager()
     success = pm.toggle_plugin(name, req.enabled)
@@ -39,7 +40,7 @@ def toggle_plugin(name: str, req: TogglePluginRequest, db: Session = Depends(get
     return {"status": "success", "plugin": name, "enabled": req.enabled}
 
 @router.post("/{name}/execute")
-def execute_plugin(name: str, req: ExecutePluginRequest, db: Session = Depends(get_db)):
+def execute_plugin(name: str, req: ExecutePluginRequest, db: Session = Depends(get_db), admin = Depends(get_current_active_admin)):
     """Execute an authorized plugin action."""
     pm = get_plugin_manager()
     res = pm.execute_plugin(name, req.action, req.params or {})

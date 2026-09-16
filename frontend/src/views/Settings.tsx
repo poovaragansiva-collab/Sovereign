@@ -95,16 +95,16 @@ export default function Settings({ addToast }: Props) {
   };
 
   return (
-    <div className="view-container">
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '24px', overflowY: 'auto' }}>
       {/* Header */}
-      <div className="view-header">
+      <div className="section-header" style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h2>System & Workspace Settings</h2>
-          <p className="view-desc">
+          <h2 className="section-title">System & Workspace Settings</h2>
+          <p className="section-sub">
             Configure local inference parameters, RAG indexing heuristics, air-gapped security policies, and workstation telemetry.
           </p>
         </div>
-        <div className="view-actions">
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           {loading && <span className="badge badge-blue">Refreshing Telemetry...</span>}
           <button className="btn-secondary" onClick={handleResetDefaults} disabled={saving || loading}>
             ↺ Reset Defaults
@@ -116,39 +116,39 @@ export default function Settings({ addToast }: Props) {
       </div>
 
       {/* Tabs Bar */}
-      <div className="settings-nav-tabs">
+      <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '16px', marginBottom: '24px' }}>
         <button
-          className={`settings-tab-btn ${tab === 'general' ? 'active' : ''}`}
+          className={tab === 'general' ? 'btn-primary' : 'btn-secondary'}
           onClick={() => setTab('general')}
         >
           ⚙️ General
         </button>
         <button
-          className={`settings-tab-btn ${tab === 'ai' ? 'active' : ''}`}
+          className={tab === 'ai' ? 'btn-primary' : 'btn-secondary'}
           onClick={() => setTab('ai')}
         >
           🧠 AI & Inference
         </button>
         <button
-          className={`settings-tab-btn ${tab === 'rag' ? 'active' : ''}`}
+          className={tab === 'rag' ? 'btn-primary' : 'btn-secondary'}
           onClick={() => setTab('rag')}
         >
           📚 RAG & Vector
         </button>
         <button
-          className={`settings-tab-btn ${tab === 'security' ? 'active' : ''}`}
+          className={tab === 'security' ? 'btn-primary' : 'btn-secondary'}
           onClick={() => setTab('security')}
         >
           🛡️ Security & Enclave
         </button>
         <button
-          className={`settings-tab-btn ${tab === 'storage' ? 'active' : ''}`}
+          className={tab === 'storage' ? 'btn-primary' : 'btn-secondary'}
           onClick={() => setTab('storage')}
         >
           💾 Storage & DB
         </button>
         <button
-          className={`settings-tab-btn ${tab === 'system' ? 'active' : ''}`}
+          className={tab === 'system' ? 'btn-primary' : 'btn-secondary'}
           onClick={() => setTab('system')}
         >
           📊 System Diagnostics
@@ -156,12 +156,12 @@ export default function Settings({ addToast }: Props) {
       </div>
 
       {/* Tab Content */}
-      <div className="settings-content-card">
+      <div className="card" style={{ padding: '24px' }}>
         {/* ── GENERAL TAB ── */}
         {tab === 'general' && (
-          <div className="settings-section">
-            <h3 className="settings-group-title">Workstation Identification</h3>
-            <div className="settings-grid-row">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <h3 className="form-label" style={{ fontSize: '14px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px' }}>Workstation Identification</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
               <div className="settings-field">
                 <label className="settings-label">Workstation Name / Node Label</label>
                 <input
@@ -189,10 +189,10 @@ export default function Settings({ addToast }: Props) {
               </div>
             </div>
 
-            <div className="settings-divider" />
+            <div style={{ height: '1px', background: 'var(--border-subtle)' }} />
 
-            <h3 className="settings-group-title">API Routing</h3>
-            <div className="settings-grid-row">
+            <h3 className="form-label" style={{ fontSize: '14px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px' }}>API Routing</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
               <div className="settings-field">
                 <label className="settings-label">FastAPI Backend Endpoint</label>
                 <input
@@ -221,9 +221,9 @@ export default function Settings({ addToast }: Props) {
 
         {/* ── AI & INFERENCE TAB ── */}
         {tab === 'ai' && (
-          <div className="settings-section">
-            <h3 className="settings-group-title">Inference Hyperparameters</h3>
-            <div className="settings-grid-row">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <h3 className="form-label" style={{ fontSize: '14px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px' }}>Inference Hyperparameters</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
               <div className="settings-field">
                 <label className="settings-label">
                   Sampling Temperature: <strong>{temperature}</strong>
@@ -259,10 +259,10 @@ export default function Settings({ addToast }: Props) {
               </div>
             </div>
 
-            <div className="settings-divider" />
+            <div style={{ height: '1px', background: 'var(--border-subtle)' }} />
 
-            <h3 className="settings-group-title">Streaming & Rendering</h3>
-            <div className="settings-toggle-row">
+            <h3 className="form-label" style={{ fontSize: '14px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px' }}>Streaming & Rendering</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <div style={{ fontWeight: 600, fontSize: 14 }}>Real-Time Token Streaming</div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
@@ -279,10 +279,10 @@ export default function Settings({ addToast }: Props) {
               </label>
             </div>
 
-            <div className="settings-divider" />
+            <div style={{ height: '1px', background: 'var(--border-subtle)' }} />
 
-            <h3 className="settings-group-title">Available Local Models ({models.length})</h3>
-            <div className="installed-models-badges">
+            <h3 className="form-label" style={{ fontSize: '14px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px' }}>Available Local Models ({models.length})</h3>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               {models.length === 0 ? (
                 <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Detecting installed Ollama models...</span>
               ) : (
@@ -300,9 +300,9 @@ export default function Settings({ addToast }: Props) {
 
         {/* ── RAG & VECTOR TAB ── */}
         {tab === 'rag' && (
-          <div className="settings-section">
-            <h3 className="settings-group-title">Text Chunking & Segmentation</h3>
-            <div className="settings-grid-row">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <h3 className="form-label" style={{ fontSize: '14px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px' }}>Text Chunking & Segmentation</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
               <div className="settings-field">
                 <label className="settings-label">Target Chunk Size (Characters)</label>
                 <input
@@ -331,10 +331,10 @@ export default function Settings({ addToast }: Props) {
               </div>
             </div>
 
-            <div className="settings-divider" />
+            <div style={{ height: '1px', background: 'var(--border-subtle)' }} />
 
-            <h3 className="settings-group-title">Vector Search Configuration</h3>
-            <div className="settings-grid-row">
+            <h3 className="form-label" style={{ fontSize: '14px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px' }}>Vector Search Configuration</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
               <div className="settings-field">
                 <label className="settings-label">Top-K Passage Retrieval Count</label>
                 <select
@@ -366,9 +366,9 @@ export default function Settings({ addToast }: Props) {
 
         {/* ── SECURITY & ENCLAVE TAB ── */}
         {tab === 'security' && (
-          <div className="settings-section">
-            <h3 className="settings-group-title">Air-Gapped Enclave Guarantees</h3>
-            <div className="settings-toggle-row">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <h3 className="form-label" style={{ fontSize: '14px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px' }}>Air-Gapped Enclave Guarantees</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <div style={{ fontWeight: 600, fontSize: 14 }}>Strict Air-Gap Mode</div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
@@ -413,10 +413,10 @@ export default function Settings({ addToast }: Props) {
 
         {/* ── STORAGE & DATABASE TAB ── */}
         {tab === 'storage' && (
-          <div className="settings-section">
-            <h3 className="settings-group-title">Storage Paths & Directories</h3>
-            <div className="settings-field" style={{ marginBottom: 14 }}>
-              <label className="settings-label">Primary SQLite Database</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <h3 className="form-label" style={{ fontSize: '14px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px' }}>Storage Paths & Directories</h3>
+            <div style={{ marginBottom: 14 }}>
+              <label className="form-label" style={{ marginBottom: '8px', display: 'block' }}>Primary SQLite Database</label>
               <input
                 type="text"
                 className="form-input"
@@ -450,9 +450,9 @@ export default function Settings({ addToast }: Props) {
 
         {/* ── SYSTEM DIAGNOSTICS TAB ── */}
         {tab === 'system' && (
-          <div className="settings-section">
-            <h3 className="settings-group-title">Node & Service Telemetry</h3>
-            <div className="stats-grid" style={{ marginBottom: 20 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <h3 className="form-label" style={{ fontSize: '14px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px' }}>Node & Service Telemetry</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: 20 }}>
               <div className="stat-card">
                 <div className="stat-label">FastAPI Backend</div>
                 <div className="stat-value" style={{ color: 'var(--brand-green)', fontSize: 20 }}>

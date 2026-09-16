@@ -33,9 +33,6 @@ type View =
 function App() {
   const { user, logout } = useAuth();
   const [view, setView] = useState<View>('chat');
-  
-  // Left Sidebar State
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Status State
   const [ollamaOnline, setOllamaOnline] = useState<boolean | null>(null);
@@ -51,6 +48,8 @@ function App() {
     }
   }, []);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react/set-state-in-effect
   useEffect(() => {
     checkStatus();
     const interval = setInterval(checkStatus, 30000);
@@ -83,117 +82,122 @@ function App() {
       {/* ─────────────────────────────────────────────
           LEFT SIDEBAR
       ───────────────────────────────────────────── */}
-      <aside className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '16px' }}>
+      <aside className="sidebar fixed-sidebar">
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', padding: '12px' }}>
           
           {/* Brand */}
-          <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            {!sidebarCollapsed && (
-              <div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '18px', color: 'var(--text-primary)' }}>SOVEREIGN</div>
-                <div style={{ fontSize: '10px', color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>LOCAL AI WORKBENCH</div>
-              </div>
-            )}
-            <button 
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingBottom: '12px', borderBottom: '1px solid var(--border-structural)', marginBottom: '12px' }}>
+            <div style={{ width: '24px', height: '24px', backgroundColor: 'var(--text-primary)', borderRadius: '4px' }}></div>
+            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+              <span style={{ fontFamily: 'var(--font-newsreader)', fontSize: '18px', fontWeight: 500, lineHeight: 1, color: 'var(--text-primary)' }}>
+                SOVEREIGN
+              </span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-secondary)', letterSpacing: '0.02em' }}>
+                v2.4 on-prem
+              </span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+            <button className="btn btn-primary" style={{ flex: 1, padding: '6px 12px', justifyContent: 'space-between', fontFamily: 'var(--font-mono)', fontSize: '12px' }} onClick={() => navigate('chat')}>
+              New Chat <span style={{ color: 'rgba(255,255,255,0.7)' }}>[⌘N]</span>
             </button>
           </div>
 
-          {!sidebarCollapsed && (
-            <button className="btn-primary" style={{ marginBottom: '24px', width: '100%' }} onClick={() => navigate('chat')}>
-              + New Chat
-            </button>
-          )}
-
-          <nav style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-subtle)', marginBottom: '8px', marginTop: '8px' }}>
-              {!sidebarCollapsed && 'WORKSPACE'}
+          <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* Nav Group 1 */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span className="nav-group-title">
+                Core Platform
+              </span>
+              {[
+                { id: 'chat', label: 'Conversations' },
+                { id: 'documents', label: 'Knowledge Base' },
+                { id: 'workspace', label: 'Task Execution' },
+              ].map(item => (
+                <button 
+                  key={item.id} 
+                  onClick={() => navigate(item.id as View)}
+                  className={`nav-item ${view === item.id ? 'active' : ''}`}
+                >
+                  <span className="nav-item-text">{item.label}</span>
+                </button>
+              ))}
             </div>
-            {[
-              { id: 'chat', label: 'Conversations' },
-              { id: 'documents', label: 'Knowledge Base' },
-              { id: 'workspace', label: 'Tasks' },
-              { id: 'history', label: 'History' },
-              { id: 'outputs', label: 'Outputs' },
-            ].map(item => (
-              <button 
-                key={item.id} 
-                onClick={() => navigate(item.id as View)}
-                style={{
-                  textAlign: 'left',
-                  padding: '8px 12px',
-                  borderRadius: 'var(--radius-sm)',
-                  backgroundColor: view === item.id ? 'var(--sunken)' : 'transparent',
-                  color: view === item.id ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  border: 'none',
-                  fontSize: '14px',
-                  fontWeight: view === item.id ? 600 : 400,
-                  cursor: 'pointer'
-                }}
-              >
-                {!sidebarCollapsed ? item.label : item.label[0]}
-              </button>
-            ))}
+
+            {/* Nav Group 2 */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span className="nav-group-title">
+                Telemetry & Logs
+              </span>
+              {[
+                { id: 'history', label: 'Task History' },
+                { id: 'outputs', label: 'Output Artifacts' },
+                { id: 'audit', label: 'Audit Logs' },
+              ].map(item => (
+                <button 
+                  key={item.id} 
+                  onClick={() => navigate(item.id as View)}
+                  className={`nav-item ${view === item.id ? 'active' : ''}`}
+                >
+                  <span className="nav-item-text">{item.label}</span>
+                </button>
+              ))}
+            </div>
           </nav>
+        </div>
 
-          {/* Bottom Actions */}
-          <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--border-structural)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {[
-              { id: 'models', label: 'Models' },
-              { id: 'plugins', label: 'Plugins' },
-              { id: 'settings', label: 'Settings' },
-            ].map(item => (
-              <button 
-                key={item.id} 
-                onClick={() => navigate(item.id as View)}
-                style={{
-                  textAlign: 'left',
-                  padding: '8px 12px',
-                  borderRadius: 'var(--radius-sm)',
-                  backgroundColor: view === item.id ? 'var(--sunken)' : 'transparent',
-                  color: view === item.id ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  border: 'none',
-                  fontSize: '14px',
-                  cursor: 'pointer'
-                }}
-              >
-                {!sidebarCollapsed ? item.label : item.label[0]}
-              </button>
-            ))}
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', padding: '8px', backgroundColor: 'var(--sunken)', borderRadius: 'var(--radius-sm)' }}>
-              {!sidebarCollapsed && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: 'var(--text-primary)', color: 'var(--canvas)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold' }}>
-                    {user?.username?.[0]?.toUpperCase()}
-                  </div>
-                  <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '80px' }}>{user?.username}</span>
-                </div>
-              )}
-              <button onClick={() => logout()} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }} title="Sign out">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-              </button>
-            </div>
-            
-            {!sidebarCollapsed && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--text-subtle)', marginTop: '8px', fontFamily: 'var(--font-mono)' }}>
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: ollamaOnline ? '#10b981' : '#ef4444' }} />
-                {ollamaOnline ? 'RUNTIME ONLINE' : 'RUNTIME OFFLINE'}
-              </div>
-            )}
+        {/* Sidebar Footer */}
+        <div className="sidebar-footer">
+          <div className="status-indicator">
+            <div className={`status-dot ${ollamaOnline ? 'online' : 'offline'}`}></div>
+            <span className="status-text">
+              {ollamaOnline ? 'Ollama Air-Gapped' : 'Runtime Offline'}
+            </span>
           </div>
 
+          <div className="user-profile">
+            <div className="user-avatar">
+              {user?.username?.[0]?.toUpperCase()}
+            </div>
+            <div className="user-info">
+              <span className="user-name">
+                {user?.username}
+              </span>
+              <span className="user-role">Operator</span>
+            </div>
+          </div>
+
+          <div className="footer-actions">
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button className="footer-btn primary" onClick={() => navigate('settings')} title="Settings">Settings</button>
+              <button className="footer-btn primary" onClick={() => navigate('models')} title="Models">Models</button>
+            </div>
+            <button className="footer-btn secondary" onClick={() => logout()} title="Sign out">
+              Logout
+            </button>
+          </div>
         </div>
       </aside>
 
       {/* ─────────────────────────────────────────────
-          MAIN AREA (CENTER + RIGHT)
+          MAIN AREA (CENTER)
       ───────────────────────────────────────────── */}
-      <div className="main-area">
-        {renderView()}
+      <div className="main-area" style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: 'calc(100vw - 240px)' }}>
+        <header style={{ height: '56px', borderBottom: '1px solid var(--border-structural)', display: 'flex', alignItems: 'center', padding: '0 24px', backgroundColor: 'var(--canvas)', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: 'var(--sunken)', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border-structural)' }}>
+              <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981' }}></div>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', textTransform: 'uppercase', color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>
+                Local • Air-Gapped • Secure
+              </span>
+            </div>
+          </div>
+        </header>
+
+        <main style={{ flex: 1, overflowY: 'auto' }}>
+          {renderView()}
+        </main>
       </div>
 
       <ToastContainer toasts={toasts} removeToast={removeToast} />

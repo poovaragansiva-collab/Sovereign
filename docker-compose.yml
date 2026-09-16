@@ -2,13 +2,13 @@ services:
   postgres:
     image: postgres:15-alpine
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-sovereign}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sovereign_pass}
-      POSTGRES_DB: ${POSTGRES_DB:-sovereign_db}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sovereign} -d ${POSTGRES_DB:-sovereign_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -22,10 +22,10 @@ services:
       - ./uploads:/app/uploads
       - ./local_outputs:/app/local_outputs
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-sovereign}:${POSTGRES_PASSWORD:-sovereign_pass}@postgres:5432/${POSTGRES_DB:-sovereign_db}
-      - JWT_SECRET=${JWT_SECRET:-super-secret-key-change-in-production}
-      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - JWT_SECRET=${JWT_SECRET}
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
       - 'SOVEREIGN_MODELS=[{"name":"gemma3:4b", "type":"general"}, {"name":"qwen3:4b", "type":"reasoning"}, {"name":"qwen2.5-coder:3b", "type":"coding"}]'
     depends_on:

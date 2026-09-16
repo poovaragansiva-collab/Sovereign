@@ -15,6 +15,7 @@ from rag.embeddings import LocalEmbeddings
 from rag.vectorstore import LocalVectorStore
 from tools.registry import ToolRegistry
 from tools.calculator import CalculatorTool
+from tools.sandbox import PythonSandboxTool
 from vision.vision_client import OllamaVisionClient
 from outputs.basic import JSONOutputGenerator, TXTOutputGenerator
 from outputs.docx import DOCXOutputGenerator
@@ -33,6 +34,7 @@ class AIExecutionService:
 
         self.tool_registry = ToolRegistry()
         self.tool_registry.register(CalculatorTool())
+        self.tool_registry.register(PythonSandboxTool())
         self.vision_client = OllamaVisionClient(ai_client=self.ai_client)
 
         # Defer heavy initialization (like embedding models) unless needed,
@@ -132,38 +134,23 @@ class AIExecutionService:
         input_data = dict(task.input_data)
         if task.files:
             if capability == "vision" and "image_path" not in input_data:
-                input_data["image_path"] = task.files[0]
+                for f in task.files:
+                    if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif', '.webp')):
+                        input_data["image_path"] = f
+                        break
+                if "image_path" not in input_data:
+                    input_data["image_path"] = task.files[0]
             else:
                 # Add to vectorstore for RAG
                 try:
-                    from rag.loaders import TextLoader, PDFLoader, DOCXLoader
-                    from rag.chunking import TextSplitter
-
-                    splitter = TextSplitter()
-
-                    all_chunks = []
-                    for f_path in task.files:
-                        if not os.path.exists(f_path):
-                            continue
-
-                        docs = []
-                        if f_path.endswith('.txt'):
-                            docs = TextLoader().load(f_path)
-                        elif f_path.endswith('.pdf'):
-                            docs = PDFLoader().load(f_path)
-                        elif f_path.endswith('.docx'):
-                            docs = DOCXLoader().load(f_path)
-
-                        if docs:
-                            chunks = splitter.split_documents(docs)
-                            all_chunks.extend(chunks)
-
-                    if all_chunks and self.vectorstore and self.embeddings:
-                        texts = [c["text"] for c in all_chunks]
-                        metadatas = [c["metadata"] for c in all_chunks]
-                        # Assume synchronous embedding generation for local
-                        embeds = self.embeddings.embed_documents(texts)
-                        self.vectorstore.add_texts(texts, metadatas, embeds)
+                    if self.retriever:
+                        user_id = task.metadata.get("user_id") if task.metadata else None
+                        for f_path in task.files:
+                            if os.path.exists(f_path):
+                                try:
+                                    self.retriever.index_document(f_path, user_id=user_id)
+                                except Exception as e:
+                                    print(f"Failed to index RAG document {f_path}: {e}")
                 except Exception as e:
                     print(f"Failed to load RAG documents: {e}")
 

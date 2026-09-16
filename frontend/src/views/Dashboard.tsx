@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { api } from '../api';
 import type { ToastType } from '../components/ToastContainer';
 
@@ -28,8 +28,8 @@ interface DashboardData {
     capability: string;
     status: string;
     model_used: string | null;
-    created_at: string | null;
-    completed_at: string | null;
+    created_time: string | null;
+    completed_time: string | null;
   }>;
 }
 
@@ -63,7 +63,7 @@ export default function Dashboard({ onNavigate, addToast }: Props) {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       setLoading(true);
       const d = await api.getDashboardStats();
@@ -73,9 +73,9 @@ export default function Dashboard({ onNavigate, addToast }: Props) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [addToast]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
 
   if (loading) {
     return (
@@ -153,6 +153,45 @@ export default function Dashboard({ onNavigate, addToast }: Props) {
           }}>
             <span style={{ color: '#94a3b8' }}>RAG Engine: </span>
             <strong style={{ color: '#38bdf8' }}>{m?.rag_vectorstore ?? 'chromadb'}</strong>
+          </div>
+        </div>
+      </div>
+      {/* Sovereignty Status Dashboard */}
+      <div className="card" style={{ 
+        marginBottom: '20px', 
+        borderLeft: '4px solid #10b981', 
+        background: 'linear-gradient(to right, rgba(16, 185, 129, 0.05), transparent)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '15px' }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" style={{ width: 24, height: 24, marginRight: '10px' }}>
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          </svg>
+          <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#10b981' }}>Sovereignty Status</h3>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+            <span style={{ color: '#10b981' }}>✓</span> <span>Air-gapped Execution (No Cloud APIs)</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+            <span style={{ color: '#10b981' }}>✓</span> <span>Local Ollama Models</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+            <span style={{ color: '#10b981' }}>✓</span> <span>Local ChromaDB RAG Vectorstore</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+            <span style={{ color: '#10b981' }}>✓</span> <span>Local Embeddings (HuggingFace)</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+            <span style={{ color: '#10b981' }}>✓</span> <span>Local Vision Engine</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+            <span style={{ color: '#10b981' }}>✓</span> <span>Role-Based Access Control (RBAC)</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+            <span style={{ color: '#10b981' }}>✓</span> <span>Isolated Task Execution Sandbox</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+            <span style={{ color: '#10b981' }}>✓</span> <span>Local Credentials & Secrets</span>
           </div>
         </div>
       </div>
@@ -315,7 +354,7 @@ export default function Dashboard({ onNavigate, addToast }: Props) {
                   <td>{capBadge(t.capability)}</td>
                   <td>{statusBadge(t.status)}</td>
                   <td className="td-mono">{t.model_used ?? '—'}</td>
-                  <td className="td-muted">{formatRelative(t.created_at)}</td>
+                  <td className="td-muted">{formatRelative(t.created_time)}</td>
                 </tr>
               ))}
             </tbody>

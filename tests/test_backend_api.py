@@ -35,13 +35,13 @@ class TestBackendAPI(unittest.TestCase):
 
     def test_setup_status_empty(self):
         save_models([]) # Ensure empty
-        response = client.get("/api/models/setup-status")
+        response = client.get("/api/v1/models/setup-status")
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json()["setup_required"])
 
     def test_setup_status_configured(self):
         save_models([{"name": "test-model", "type": "general"}])
-        response = client.get("/api/models/setup-status")
+        response = client.get("/api/v1/models/setup-status")
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.json()["setup_required"])
 
@@ -52,11 +52,11 @@ class TestBackendAPI(unittest.TestCase):
                 {"name": "test2", "type": "reasoning"}
             ]
         }
-        response = client.post("/api/models/config", json=payload)
+        response = client.post("/api/v1/models/config", json=payload)
         self.assertEqual(response.status_code, 200)
         
         # Verify it was saved
-        config_resp = client.get("/api/models/config")
+        config_resp = client.get("/api/v1/models/config")
         models = config_resp.json()["models"]
         self.assertEqual(len(models), 2)
 
@@ -66,7 +66,7 @@ class TestBackendAPI(unittest.TestCase):
                 {"name": "test1", "type": "invalid_type"}
             ]
         }
-        response = client.post("/api/models/config", json=payload)
+        response = client.post("/api/v1/models/config", json=payload)
         self.assertEqual(response.status_code, 400)
 
     def test_tasks_execute_mock(self):
@@ -79,18 +79,18 @@ class TestBackendAPI(unittest.TestCase):
         # It will likely fail at the LLM level without a real Ollama, 
         # but the request should be accepted by FastAPI.
         # So we just ensure it doesn't return 422 Unprocessable Entity
-        response = client.post("/api/tasks/execute", json=payload)
+        response = client.post("/api/v1/tasks/execute", json=payload)
         self.assertNotEqual(response.status_code, 422)
     def test_files_upload_download(self):
         # Upload
         files = {"file": ("test.txt", b"hello world")}
-        res = client.post("/api/files/upload", files=files)
+        res = client.post("/api/v1/files/upload", files=files)
         self.assertEqual(res.status_code, 200)
         data = res.json()
         self.assertIn("file_id", data)
 
     def test_tasks_list(self):
-        res = client.get("/api/tasks/")
+        res = client.get("/api/v1/tasks/")
         self.assertEqual(res.status_code, 200)
         self.assertIn("tasks", res.json())
 

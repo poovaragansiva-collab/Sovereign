@@ -97,51 +97,59 @@ class ModelRouter:
 
         # Vision capability check: do NOT pretend text models have vision
         if capability == "vision":
-            vision_models = [m for m in live_models if any(k in m.lower() for k in ["llava", "vision", "minicpm-v", "qwen-vl", "moondream", "bakllava"])]
+            vision_models = [m for m in live_models if any(k in m.get("name", "").lower() for k in ["llava", "vision", "minicpm-v", "qwen-vl", "moondream", "bakllava"])]
             if vision_models:
                 return {
-                    "model": vision_models[0],
+                    "model": vision_models[0].get("name") if isinstance(vision_models[0], dict) else vision_models[0],
                     "capability": "vision",
-                    "reason": f"Auto-detected vision model '{vision_models[0]}'"
+                    "reason": f"Auto-detected vision model '{vision_models[0].get('name') if isinstance(vision_models[0], dict) else vision_models[0]}'"
                 }
             raise ModelRoutingError("Vision model not installed. No locally installed vision-capable model detected in Ollama.")
 
         # Embedding capability check
         if capability == "embedding":
-            embed_models = [m for m in live_models if any(k in m.lower() for k in ["embed", "bge", "nomic", "all-minilm", "qwen2.5-coder"])]
+            embed_models = [m for m in live_models if any(k in m.get("name", "").lower() for k in ["embed", "bge", "nomic", "all-minilm", "qwen2.5-coder"])]
             if embed_models:
                 return {
-                    "model": embed_models[0],
+                    "model": embed_models[0].get("name") if isinstance(embed_models[0], dict) else embed_models[0],
                     "capability": "embedding",
-                    "reason": f"Auto-detected embedding model '{embed_models[0]}'"
+                    "reason": f"Auto-detected embedding model '{embed_models[0].get('name') if isinstance(embed_models[0], dict) else embed_models[0]}'"
                 }
-            raise ModelRoutingError("Embedding model not installed. No compatible local embedding model detected.")
+            raise ModelRoutingError("Embedding model not installed. No locally installed embedding model detected in Ollama.")
 
         # Coding capability check
         if capability == "coding":
-            coder_models = [m for m in live_models if any(k in m.lower() for k in ["code", "coder", "starcoder", "deepseek-coder"])]
+            coder_models = [m for m in live_models if any(k in m.get("name", "").lower() for k in ["code", "coder", "starcoder", "deepseek-coder"])]
             if coder_models:
                 return {
-                    "model": coder_models[0],
+                    "model": coder_models[0].get("name") if isinstance(coder_models[0], dict) else coder_models[0],
                     "capability": "coding",
-                    "reason": f"Auto-detected coding model '{coder_models[0]}'"
+                    "reason": f"Auto-detected coding model '{coder_models[0].get('name') if isinstance(coder_models[0], dict) else coder_models[0]}'"
                 }
 
         # Reasoning capability check
         if capability == "reasoning":
-            reasoning_models = [m for m in live_models if any(k in m.lower() for k in ["deepseek", "qwen", "reason", "r1"])]
+            reasoning_models = [m for m in live_models if any(k in m.get("name", "").lower() for k in ["deepseek", "qwen", "reason", "r1"])]
             if reasoning_models:
                 return {
-                    "model": reasoning_models[0],
+                    "model": reasoning_models[0].get("name") if isinstance(reasoning_models[0], dict) else reasoning_models[0],
                     "capability": "reasoning",
-                    "reason": f"Auto-detected reasoning model '{reasoning_models[0]}'"
+                    "reason": f"Auto-detected reasoning model '{reasoning_models[0].get('name') if isinstance(reasoning_models[0], dict) else reasoning_models[0]}'"
                 }
 
-        # General / default fallback to first available local model
-        selected = live_models[0]
-        return {
-            "model": selected,
-            "capability": capability,
-            "reason": f"Defaulted to installed local model '{selected}' for '{capability}'"
-        }
+        # Default general text capability fallback
+        # Exclude known embedding/vision models from being used as general chat models
+        general_models = [
+            m for m in live_models 
+            if not any(k in m.get("name", "").lower() for k in ["embed", "bge", "nomic", "llava", "vision"])
+        ]
+        
+        if general_models:
+            return {
+                "model": general_models[0].get("name") if isinstance(general_models[0], dict) else general_models[0],
+                "capability": capability,
+                "reason": f"Auto-selected general model '{general_models[0].get('name') if isinstance(general_models[0], dict) else general_models[0]}'"
+            }
+            
+        raise ModelRoutingError("No suitable general model installed. Please run `ollama run gemma:2b` or similar.")
 

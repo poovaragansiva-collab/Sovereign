@@ -7,7 +7,7 @@ interface Props {
 }
 
 interface OutputItem {
-  id: number;
+  id: string;
   filename: string;
   format: string;
   file_size: number;
@@ -84,19 +84,19 @@ export default function OutputGallery({ addToast }: Props) {
   };
 
   return (
-    <div className="view-container">
-      <div className="view-header">
+    <div>
+      <div className="section-header mb-4">
         <div>
-          <h2>Output Gallery & Exported Artifacts</h2>
-          <p className="view-desc">
+          <div className="section-title">Output Gallery & Exported Artifacts</div>
+          <div className="section-sub">
             Directly browse and download generated reports, presentations, spreadsheets, and documents.
-          </p>
+          </div>
         </div>
-        <div className="view-actions">
-          <button className="btn-secondary" onClick={fetchOutputs} disabled={loading}>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button className="btn btn-secondary" onClick={fetchOutputs} disabled={loading}>
             🔄 Refresh
           </button>
-          <button className="btn-primary" onClick={() => setShowGenerator(true)}>
+          <button className="btn btn-primary" onClick={() => setShowGenerator(true)}>
             ➕ Generate New File
           </button>
         </div>
@@ -189,8 +189,8 @@ export default function OutputGallery({ addToast }: Props) {
               </div>
 
               <div className="modal-actions">
-                <button className="btn-secondary" onClick={() => setShowGenerator(false)}>Cancel</button>
-                <button className="btn-primary" onClick={handleGenerate} disabled={generating}>
+                <button className="btn btn-secondary" onClick={() => setShowGenerator(false)}>Cancel</button>
+                <button className="btn btn-primary" onClick={handleGenerate} disabled={generating}>
                   {generating ? 'Generating Document...' : 'Generate & Download'}
                 </button>
               </div>
