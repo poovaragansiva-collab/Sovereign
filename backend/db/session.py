@@ -44,5 +44,29 @@ def get_db():
         db.close()
 
 def init_db():
-    """Initializes all database tables. Replaced by Alembic."""
-    pass
+    """Initializes all database tables using Alembic migrations programmatically."""
+    import logging
+    from alembic import command
+    from alembic.config import Config
+    import os
+    
+    get_engine()
+    
+    try:
+        # Determine paths relative to this file
+        backend_dir = os.path.dirname(os.path.dirname(__file__))
+        alembic_cfg_path = os.path.join(backend_dir, "alembic.ini")
+        
+        if os.path.exists(alembic_cfg_path):
+            alembic_cfg = Config(alembic_cfg_path)
+            # Ensure script_location is relative to backend_dir
+            alembic_cfg.set_main_option("script_location", os.path.join(backend_dir, "alembic"))
+            alembic_cfg.set_main_option("sqlalchemy.url", get_database_url())
+            command.upgrade(alembic_cfg, "head")
+            logging.getLogger("alembic").info("Database migrations applied successfully.")
+        else:
+            raise FileNotFoundError("alembic.ini not found")
+    except Exception as e:
+        logging.getLogger("alembic").error(f"Failed to apply migrations, falling back to create_all: {e}")
+        from backend.db.models import Base
+        Base.metadata.create_all(bind=engine)

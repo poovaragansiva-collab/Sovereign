@@ -2,39 +2,35 @@ import React from 'react';
 
 const Footer: React.FC = () => {
   return (
-    <footer className="bg-[#0A0A0A] text-[#F5F3EE] py-16 border-t border-[#333333]">
-      <div className="container mx-auto px-8 max-w-6xl">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
-          <div className="mb-8 md:mb-0">
-            <div className="font-display text-2xl tracking-tight mb-1">
-              SOVEREIGN
-            </div>
-            <div className="font-mono text-[10px] tracking-widest text-[#999999]">
-              LOCAL AI WORKBENCH
-            </div>
+    <footer style={{ borderTop: '1px solid var(--border-structural)', padding: '40px 32px', backgroundColor: 'var(--canvas)' }}>
+      <div style={{ maxWidth: '1000px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+            <div style={{ width: '16px', height: '16px', backgroundColor: 'var(--text-secondary)', borderRadius: '2px' }}></div>
+            <span style={{ fontFamily: 'var(--font-newsreader)', fontSize: '18px', fontWeight: 500, color: 'var(--text-secondary)' }}>SOVEREIGN</span>
           </div>
-          
-          <div className="flex space-x-8">
-            <a href="/login" className="font-mono text-xs text-[#999999] hover:text-[#B99A5B] transition-colors">
-              WORKBENCH
-            </a>
-            <a href="/docs" className="font-mono text-xs text-[#999999] hover:text-[#B99A5B] transition-colors">
-              DOCUMENTATION
-            </a>
-            <a href="https://github.com" className="font-mono text-xs text-[#999999] hover:text-[#B99A5B] transition-colors">
-              GITHUB
-            </a>
+          <p style={{ color: 'var(--text-subtle)', fontSize: '13px', maxWidth: '300px' }}>
+            Enterprise-grade private AI workbench. Engineered for strict data compliance and offline execution.
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', gap: '64px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <h4 style={{ fontSize: '13px', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', color: 'var(--text-primary)', letterSpacing: '0.05em' }}>Platform</h4>
+            <a href="#" style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>Architecture</a>
+            <a href="#" style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>Security</a>
+            <a href="#" style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>Models</a>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <h4 style={{ fontSize: '13px', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', color: 'var(--text-primary)', letterSpacing: '0.05em' }}>Legal</h4>
+            <a href="#" style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>Privacy Policy</a>
+            <a href="#" style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>Terms of Service</a>
           </div>
         </div>
-        
-        <div className="mt-16 pt-8 border-t border-[#333333] flex flex-col md:flex-row justify-between items-center">
-          <div className="font-mono text-[10px] text-[#666666] mb-4 md:mb-0">
-            © {new Date().getFullYear()} SOVEREIGN. ALL RIGHTS RESERVED.
-          </div>
-          <div className="font-mono text-[10px] text-[#666666]">
-            YOUR AI. YOUR INFRASTRUCTURE. YOUR DATA.
-          </div>
-        </div>
+      </div>
+      
+      <div style={{ borderTop: '1px solid var(--border-heavy)', marginTop: '40px', paddingTop: '24px', textAlign: 'center', color: 'var(--text-subtle)', fontSize: '12px', fontFamily: 'var(--font-mono)' }}>
+        © {new Date().getFullYear()} Sovereign Private AI. All rights reserved.
       </div>
     </footer>
   );

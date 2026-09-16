@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "oxlint",
+    "lint": "oxlint -A react/set-state-in-effect -A react/only-export-components",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from agents import AgentWorkflow, AgentState
 from ai.models.registry import ModelRegistry, ModelInfo
@@ -114,7 +114,9 @@ class TestAgentWorkflow(unittest.TestCase):
         # Text generation should be skipped if vision returns a response
         self.mock_client.generate.assert_not_called()
 
-    def test_routing_failure(self):
+    @patch("ai.router.ModelRouter._get_live_ollama_models")
+    def test_routing_failure(self, mock_live):
+        mock_live.return_value = [{"name": "llama3"}]
         initial_state: AgentState = {
             "task": "Test task",
             "task_type": "qa",
@@ -128,7 +130,7 @@ class TestAgentWorkflow(unittest.TestCase):
         self.assertIsNone(final_state.get("selected_model"))
         self.assertIsNone(final_state.get("response"))
         self.assertIn("errors", final_state)
-        self.assertTrue(any("vision" in err for err in final_state["errors"]))
+        self.assertTrue(any("vision" in err.lower() for err in final_state["errors"]))
         
         # Verify AI client was not called
         self.mock_client.generate.assert_not_called()

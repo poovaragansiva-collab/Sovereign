@@ -50,7 +50,7 @@ const Login: React.FC = () => {
             <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '4px' }}>Email</label>
             <input
               type="text"
-              className="input-field"
+              className="form-input"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
@@ -61,7 +61,7 @@ const Login: React.FC = () => {
             <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '4px' }}>Password</label>
             <input
               type="password"
-              className="input-field"
+              className="form-input"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -71,7 +71,7 @@ const Login: React.FC = () => {
           <button
             type="submit"
             disabled={loading}
-            className="btn-primary"
+            className="btn btn-primary"
             style={{ marginTop: '16px', padding: '10px' }}
           >
             {loading ? 'Authenticating...' : 'Sign In'}

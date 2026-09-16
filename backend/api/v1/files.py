@@ -23,7 +23,9 @@ def _is_safe_path(base_dir: str, path: str) -> bool:
         return False
 
 from backend.core.deps import get_current_user
-from backend.db.models import User
+from backend.db.models import User, TaskFile, Output, Document
+from backend.db.session import get_db
+from sqlalchemy.orm import Session
 from fastapi import Depends
 
 @router.post("/upload")
@@ -58,10 +60,18 @@ async def upload_task_file(file: UploadFile = File(...), current_user: User = De
     }
 
 @router.get("/{file_id}/download")
-async def download_file(file_id: str, format: str = "txt", current_user: User = Depends(get_current_user)):
+async def download_file(file_id: str, format: str = "txt", current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     safe_id = os.path.basename(file_id)
     safe_format = os.path.basename(format)
     file_with_ext = f"{safe_id}.{safe_format}" if not safe_id.endswith(f".{safe_format}") else safe_id
+
+    # Enforce file ownership
+    if current_user.role != "admin":
+        tf = db.query(TaskFile).filter(TaskFile.file_path.contains(safe_id), TaskFile.user_id == current_user.id).first()
+        out = db.query(Output).filter((Output.filename.contains(safe_id) | Output.file_path.contains(safe_id)), Output.user_id == current_user.id).first()
+        doc = db.query(Document).filter((Document.filename.contains(safe_id) | Document.file_path.contains(safe_id)), Document.user_id == current_user.id).first()
+        if not tf and not out and not doc:
+            raise HTTPException(status_code=403, detail="Not authorized to download this file")
 
     # Check search directories in priority order: data/outputs -> local_outputs -> data/uploads
     search_locations = [

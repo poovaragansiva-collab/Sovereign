@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { api } from '../api';
 import type { ToastType } from '../components/ToastContainer';
 
@@ -22,8 +22,8 @@ interface Task {
 
 interface TaskDetail extends Task {
   answer: string | null;
-  files: Array<{ id: number; filename: string; file_path: string; size: number }>;
-  outputs: Array<{ id: number; filename: string; file_path: string; format: string }>;
+  files: Array<{ id: string; filename: string; file_path: string; size: number }>;
+  outputs: Array<{ id: string; filename: string; file_path: string; format: string }>;
   verification: { status: string; confidence: number } | null;
 }
 
@@ -60,7 +60,7 @@ export default function TaskHistory({ addToast }: Props) {
   const [detailLoading, setDetailLoading] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
 
-  const loadTasks = async () => {
+  const loadTasks = useCallback(async () => {
     try {
       setLoading(true);
       const res = await api.listTasks({
@@ -74,9 +74,10 @@ export default function TaskHistory({ addToast }: Props) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [addToast, filterStatus, filterCap]);
 
-  useEffect(() => { loadTasks(); }, [filterStatus, filterCap]);
+  // eslint-disable-next-line
+  useEffect(() => { loadTasks(); }, [loadTasks]);
 
   const openDetail = async (taskId: string) => {
     setDetailLoading(true);

@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { api } from './api';
-import './Workspace.css';
-
 interface TaskItem {
   task_id: string;
   task: string;
@@ -29,7 +27,7 @@ const Workspace: React.FC = () => {
         capability: t.capability || 'general',
         model_used: t.model_used || '—',
         status: t.status || 'completed',
-        created_time: t.created_at || new Date().toISOString(),
+        created_time: t.created_time || new Date().toISOString(),
       }));
       setTasks(items);
     } catch (error) {
@@ -75,14 +73,15 @@ const Workspace: React.FC = () => {
   };
 
   return (
-    <div className="workspace-container">
-      <div className="sidebar">
-        <h3>Task History</h3>
-        <div className="task-list">
+    <div className="app-shell">
+      <div className="sidebar" style={{ padding: '20px', overflowY: 'auto' }}>
+        <h3 style={{ marginBottom: '16px', fontFamily: 'var(--font-newsreader)', fontSize: '18px' }}>Task History</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {tasks.map((t) => (
             <div
               key={t.task_id}
-              className="task-item"
+              className="card"
+              style={{ cursor: 'pointer', padding: '12px' }}
               onClick={async () => {
                 try {
                   const res = await api.getTask(t.task_id);
@@ -92,30 +91,33 @@ const Workspace: React.FC = () => {
                 }
               }}
             >
-              <p>
+              <p style={{ margin: '0 0 4px', fontSize: '13px' }}>
                 <strong>{t.capability}</strong>: {t.status}
               </p>
-              <small>{new Date(t.created_time).toLocaleString()}</small>
+              <small style={{ color: 'var(--text-secondary)', fontSize: '11px', fontFamily: 'var(--font-mono)' }}>
+                {new Date(t.created_time).toLocaleString()}
+              </small>
             </div>
           ))}
         </div>
       </div>
-      <div className="main-content">
-        <div className="input-area">
+      <div className="main-area" style={{ padding: '24px', overflowY: 'auto' }}>
+        <div style={{ marginBottom: '24px' }}>
           <textarea
+            className="form-textarea"
             value={inputTask}
             onChange={(e) => setInputTask(e.target.value)}
             placeholder="Enter your task here..."
             rows={4}
           />
-          <div className="controls">
-            <select value={capability} onChange={(e) => setCapability(e.target.value)}>
+          <div style={{ display: 'flex', gap: '12px', marginTop: '16px', alignItems: 'center' }}>
+            <select className="input-field" style={{ width: 'auto' }} value={capability} onChange={(e) => setCapability(e.target.value)}>
               <option value="general">General</option>
               <option value="reasoning">Reasoning</option>
               <option value="coding">Coding</option>
               <option value="vision">Vision</option>
             </select>
-            <select value={outputFormat} onChange={(e) => setOutputFormat(e.target.value)}>
+            <select className="input-field" style={{ width: 'auto' }} value={outputFormat} onChange={(e) => setOutputFormat(e.target.value)}>
               <option value="markdown">Markdown</option>
               <option value="json">JSON</option>
               <option value="text">Text</option>
@@ -123,26 +125,28 @@ const Workspace: React.FC = () => {
               <option value="docx">Word</option>
               <option value="pptx">PowerPoint</option>
             </select>
-            <input type="file" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
-            <button onClick={handleExecute} disabled={loading}>
+            <input className="input-field" style={{ width: 'auto' }} type="file" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
+            <button className="btn-primary" onClick={handleExecute} disabled={loading}>
               {loading ? 'Executing...' : 'Execute'}
             </button>
           </div>
         </div>
-        <div className="output-area">
+        <div style={{ flex: 1, backgroundColor: 'var(--surface)', padding: '24px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-structural)', overflowY: 'auto' }}>
           {selectedTask && (
-            <div className="task-result">
-              <h3>Result</h3>
-              <div className="metadata">
+            <div className="card">
+              <h3 style={{ marginBottom: '12px', fontFamily: 'var(--font-newsreader)' }}>Result</h3>
+              <div style={{ display: 'flex', gap: '16px', marginBottom: '16px', fontSize: '13px', color: 'var(--text-secondary)' }}>
                 <span>Model: {selectedTask.model_used || 'Local Router'}</span>
-                <span>Status: {selectedTask.status}</span>
+                <span>Status: <span className="status-badge">{selectedTask.status}</span></span>
                 {selectedTask.verification && (
                   <span>
                     Verification: {selectedTask.verification.status} ({selectedTask.verification.confidence})
                   </span>
                 )}
               </div>
-              <pre className="content">{selectedTask.answer || selectedTask.content || selectedTask.task}</pre>
+              <pre style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word', fontFamily: 'var(--font-mono)', fontSize: '13px', backgroundColor: 'var(--canvas)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-structural)' }}>
+                {selectedTask.answer || selectedTask.content || selectedTask.task}
+              </pre>
             </div>
           )}
         </div>

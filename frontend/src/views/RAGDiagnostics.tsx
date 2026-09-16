@@ -21,7 +21,7 @@ interface TestChunk {
   text: string;
   source: string;
   page: number;
-  score?: number;
+  distance?: number;
   ocr_applied?: boolean;
 }
 
@@ -51,6 +51,7 @@ export default function RAGDiagnostics({ addToast }: Props) {
     }
   }, [addToast]);
 
+  // eslint-disable-next-line
   useEffect(() => {
     fetchStatus();
   }, [fetchStatus]);
@@ -81,19 +82,19 @@ export default function RAGDiagnostics({ addToast }: Props) {
   };
 
   return (
-    <div className="view-container">
-      <div className="view-header">
+    <div>
+      <div className="section-header mb-4">
         <div>
-          <h2>RAG Diagnostics & Inspection Sandbox</h2>
-          <p className="view-desc">
+          <div className="section-title">RAG Diagnostics & Inspection Sandbox</div>
+          <div className="section-sub">
             Monitor local document chunking, embeddings, vector store health, and test semantic retrieval in real-time.
-          </p>
+          </div>
         </div>
-        <div className="view-actions">
-          <button className="btn-secondary" onClick={fetchStatus} disabled={loading}>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button className="btn btn-secondary" onClick={fetchStatus} disabled={loading}>
             🔄 Refresh Status
           </button>
-          <button className="btn-primary" onClick={handleReindexAll} disabled={reindexing}>
+          <button className="btn btn-primary" onClick={handleReindexAll} disabled={reindexing}>
             {reindexing ? 'Reindexing...' : '⚡ Reindex All Documents'}
           </button>
         </div>
@@ -159,7 +160,7 @@ export default function RAGDiagnostics({ addToast }: Props) {
             <option value={4}>Top 4</option>
             <option value={8}>Top 8</option>
           </select>
-          <button className="btn-primary" onClick={handleTestQuery}>
+          <button className="btn btn-primary" onClick={handleTestQuery}>
             Run Retrieval
           </button>
         </div>
@@ -185,10 +186,12 @@ export default function RAGDiagnostics({ addToast }: Props) {
                   <div className="test-chunk-header">
                     <span className="chunk-badge">Chunk #{i + 1}</span>
                     <span className="chunk-source-tag">Source: {c.source}</span>
-                    <span className="chunk-page-tag">Page: {c.page}</span>
-                    {c.score !== undefined && (
-                      <span className="chunk-score-tag">Distance Score: {c.score}</span>
-                    )}
+                    <div className="chunk-meta">
+                      {c.distance !== undefined && (
+                        <span className="chunk-score-tag">Distance Score: {c.distance}</span>
+                      )}
+                      <span className="chunk-page-tag">Page {c.page}</span>
+                    </div>
                     {c.ocr_applied && <span className="ocr-tag">OCR Applied</span>}
                   </div>
                   <div className="test-chunk-body">"{c.text}"</div>

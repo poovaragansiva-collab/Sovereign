@@ -25,7 +25,7 @@ interface TaskResult {
   verification?: { status: string; confidence: number } | null;
   errors?: string[];
   files?: Array<{ filename: string; format: string; path?: string }>;
-  outputs?: Array<{ id: number; filename: string; format: string; file_path: string }>;
+  outputs?: Array<{ id: string; filename: string; format: string; file_path: string }>;
 }
 
 const CAPS: { id: Capability; label: string; desc: string }[] = [
@@ -161,20 +161,21 @@ export default function TaskWorkspace({ addToast, onTaskComplete }: Props) {
     setCapability('general');
     setOutputFormat('markdown');
   };
-
   return (
-    <div>
-      <div className="workspace-header">
-        <div className="workspace-title">New AI Task</div>
-        <div className="workspace-sub">Describe your task — the AI Engine handles the rest locally.</div>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '24px' }}>
+      <div className="section-header">
+        <div>
+          <div className="section-title">New AI Task</div>
+          <div className="section-sub">Describe your task — the AI Engine handles the rest locally.</div>
+        </div>
       </div>
 
-      <div className="workspace-grid">
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', flex: 1, minHeight: 0 }}>
         {/* Left: Input */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto', paddingRight: '4px' }}>
           {/* Prompt */}
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{ padding: '14px 16px 0', borderBottom: '1px solid var(--border-subtle)' }}>
+            <div style={{ padding: '14px 16px 0', borderBottom: '1px solid var(--border-structural)' }}>
               <div className="form-label" style={{ marginBottom: 8 }}>Task Prompt</div>
             </div>
             <textarea
@@ -196,15 +197,15 @@ export default function TaskWorkspace({ addToast, onTaskComplete }: Props) {
 
           {/* Intelligence Preview */}
           {intelligence && (
-            <div className="intelligence-panel">
-              <div className="intelligence-panel-title">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 12, height: 12 }}>
+            <div className="card" style={{ backgroundColor: 'var(--sunken)' }}>
+              <div style={{ fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', color: 'var(--text-primary)' }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}>
                   <circle cx="12" cy="12" r="10" />
                   <path d="M12 8v4l3 3" />
                 </svg>
                 Task Intelligence Analysis
               </div>
-              <div className="intelligence-tags">
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <span className="badge badge-blue">Capability: {intelligence.capability}</span>
                 <span className="badge badge-purple">Type: {intelligence.task_type}</span>
                 {intelligence.output_format && (
@@ -217,38 +218,40 @@ export default function TaskWorkspace({ addToast, onTaskComplete }: Props) {
             </div>
           )}
 
-          {/* Capability */}
-          <div className="card">
-            <div className="form-label" style={{ marginBottom: 10 }}>Capability</div>
-            <div className="capability-pills">
-              {CAPS.map(c => (
-                <button
-                  key={c.id}
-                  id={`cap-${c.id}`}
-                  className={`cap-pill${capability === c.id ? ` selected ${c.id}` : ''}`}
-                  onClick={() => setCapability(c.id)}
-                  title={c.desc}
-                >
-                  {c.label}
-                </button>
-              ))}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            {/* Capability */}
+            <div className="card">
+              <div className="form-label" style={{ marginBottom: 10 }}>Capability</div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {CAPS.map(c => (
+                  <button
+                    key={c.id}
+                    className={capability === c.id ? 'btn-primary' : 'btn-secondary'}
+                    style={{ padding: '6px 12px', fontSize: '12px' }}
+                    onClick={() => setCapability(c.id)}
+                    title={c.desc}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
 
-          {/* Output Format */}
-          <div className="card">
-            <div className="form-label" style={{ marginBottom: 10 }}>Output Format</div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {FORMATS.map(f => (
-                <button
-                  key={f.id}
-                  id={`fmt-${f.id}`}
-                  className={`cap-pill${outputFormat === f.id ? ' selected general' : ''}`}
-                  onClick={() => setOutputFormat(f.id)}
-                >
-                  {f.label}
-                </button>
-              ))}
+            {/* Output Format */}
+            <div className="card">
+              <div className="form-label" style={{ marginBottom: 10 }}>Output Format</div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {FORMATS.map(f => (
+                  <button
+                    key={f.id}
+                    className={outputFormat === f.id ? 'btn-primary' : 'btn-secondary'}
+                    style={{ padding: '6px 12px', fontSize: '12px' }}
+                    onClick={() => setOutputFormat(f.id)}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -256,7 +259,7 @@ export default function TaskWorkspace({ addToast, onTaskComplete }: Props) {
           <div className="card">
             <div className="form-label" style={{ marginBottom: 10 }}>Attach Files</div>
             <div
-              className={`dropzone${files.length ? '' : ''}`}
+              style={{ border: '1px dashed var(--border-heavy)', padding: '24px', textAlign: 'center', borderRadius: 'var(--radius-md)', cursor: 'pointer', background: 'var(--surface)' }}
               onClick={() => fileRef.current?.click()}
               onDragOver={e => e.preventDefault()}
               onDrop={e => {
@@ -265,9 +268,9 @@ export default function TaskWorkspace({ addToast, onTaskComplete }: Props) {
                 setFiles(prev => [...prev, ...dropped]);
               }}
             >
-              <div className="dropzone-icon">📎</div>
-              <div className="dropzone-label">Drop files here or click to browse</div>
-              <div className="dropzone-sub">PDF, DOCX, TXT, PNG, JPG supported</div>
+              <div style={{ fontSize: '24px', marginBottom: '8px' }}>📎</div>
+              <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)' }}>Drop files here or click to browse</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>PDF, DOCX, TXT, PNG, JPG supported</div>
               <input
                 ref={fileRef}
                 type="file"
@@ -322,7 +325,7 @@ export default function TaskWorkspace({ addToast, onTaskComplete }: Props) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {loading && (
             <div className="card">
-              <div className="output-executing">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', color: 'var(--text-primary)', fontWeight: 500 }}>
                 <div className="loading-spinner" />
                 AI Engine executing task locally…
               </div>
@@ -341,15 +344,15 @@ export default function TaskWorkspace({ addToast, onTaskComplete }: Props) {
                   <span className={`status-badge ${result.status}`}>{result.status}</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
-                  <div className="detail-meta-item">
-                    <div className="detail-meta-label">Model Used</div>
-                    <div className="detail-meta-value" style={{ fontSize: 12, fontFamily: 'JetBrains Mono' }}>
+                  <div style={{ padding: '10px 12px', background: 'var(--sunken)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+                    <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 600 }}>Model Used</div>
+                    <div style={{ fontSize: 12, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)' }}>
                       {result.model_used ?? '—'}
                     </div>
                   </div>
-                  <div className="detail-meta-item">
-                    <div className="detail-meta-label">Task ID</div>
-                    <div className="detail-meta-value" style={{ fontSize: 11, fontFamily: 'JetBrains Mono', color: 'var(--text-muted)' }}>
+                  <div style={{ padding: '10px 12px', background: 'var(--sunken)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+                    <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 600 }}>Task ID</div>
+                    <div style={{ fontSize: 12, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)' }}>
                       {result.task_id?.slice(0, 8) ?? '—'}…
                     </div>
                   </div>
@@ -370,7 +373,7 @@ export default function TaskWorkspace({ addToast, onTaskComplete }: Props) {
               {result.answer && (
                 <div className="card">
                   <div className="form-label" style={{ marginBottom: 10 }}>AI Response</div>
-                  <div className="answer-block">{result.answer}</div>
+                  <div style={{ fontSize: '14px', lineHeight: 1.6, color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>{result.answer}</div>
                 </div>
               )}
 

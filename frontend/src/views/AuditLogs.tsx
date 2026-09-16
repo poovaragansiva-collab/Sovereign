@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { api } from '../api';
 
 interface LogEntry {
-  id: number;
+  id: string;
   task_id: string | null;
   action: string;
   details: string | null;
@@ -50,7 +50,7 @@ export default function AuditLogs() {
   const [limit, setLimit] = useState(100);
   const [filter, setFilter] = useState('');
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       setLoading(true);
       const res = await api.listAuditLogs(limit);
@@ -60,9 +60,9 @@ export default function AuditLogs() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [limit]);
 
-  useEffect(() => { load(); }, [limit]);
+  useEffect(() => { load(); }, [load]);
 
   const filtered = filter
     ? logs.filter(l =>

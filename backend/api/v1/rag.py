@@ -2,6 +2,7 @@ import os
 from typing import Optional, List
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException
+from backend.core.deps import get_current_user, get_current_active_admin
 from sqlalchemy.orm import Session
 from backend.db.session import get_db
 from backend.db.models import Document, AuditLog
@@ -27,11 +28,11 @@ class RAGQueryTestRequest(BaseModel):
     k: Optional[int] = 4
 
 class RAGReindexRequest(BaseModel):
-    document_ids: Optional[List[int]] = None
+    document_ids: Optional[List[str]] = None
     reset: Optional[bool] = False
 
 @router.get("/status")
-def get_rag_status(db: Session = Depends(get_db)):
+def get_rag_status(db: Session = Depends(get_db), admin=Depends(get_current_active_admin)):
     """Return RAG health and diagnostics statistics."""
     total_docs = db.query(Document).count()
     indexed_docs = db.query(Document).filter(Document.indexed == True).count()
@@ -55,7 +56,6 @@ def get_rag_status(db: Session = Depends(get_db)):
         "ocr_available": True
     }
 
-from backend.core.deps import get_current_user
 from backend.db.models import User, Document, AuditLog
 
 @router.post("/test")
@@ -83,19 +83,19 @@ def test_rag_retrieval(req: RAGQueryTestRequest, current_user: User = Depends(ge
         if len(source_name) > 37 and source_name[36] == '_' and source_name[:8].isalnum():
             source_name = source_name[37:]
         page_num = meta.get("page", 1)
-        score = c.get("score")
+        distance = c.get("distance")
         retrieved_chunks.append({
             "id": c.get("id"),
             "text": c.get("text"),
             "source": source_name,
             "page": page_num,
-            "score": round(score, 4) if score is not None else None,
+            "distance": round(distance, 4) if distance is not None else None,
             "ocr_applied": meta.get("ocr_applied", False)
         })
         sources.add(f"{source_name} (Page {page_num})")
 
     context_preview = "\n\n".join([
-        f"--- [{c['source']} — Page {c['page']}] (Distance: {c['score']}) ---\n{c['text'][:300]}"
+        f"--- [{c['source']} — Page {c['page']}] (Distance: {c['distance']}) ---\n{c['text'][:300]}"
         for c in retrieved_chunks
     ])
 

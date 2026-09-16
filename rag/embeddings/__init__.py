@@ -1,5 +1,6 @@
 import math
 import re
+import hashlib
 from typing import List, Optional
 import logging
 
@@ -22,7 +23,8 @@ class LocalEmbeddings:
         global SentenceTransformer
         if SentenceTransformer is not None:
             try:
-                self._st_model = SentenceTransformer(model_name or "all-MiniLM-L6-v2")
+                # Provide local_files_only=True to prevent air-gap leaks
+                self._st_model = SentenceTransformer(model_name or "all-MiniLM-L6-v2", local_files_only=True)
             except Exception:
                 pass
 
@@ -81,14 +83,14 @@ class LocalEmbeddings:
 
         for word in words:
             # Word hash
-            h = abs(hash(word))
+            h = int.from_bytes(hashlib.sha256(word.encode('utf-8')).digest(), byteorder='big')
             vec[h % dim] += 1.0
             # Character n-grams for typo-resilience
             for n in (3, 4):
                 if len(word) >= n:
                     for i in range(len(word) - n + 1):
                         sub = word[i:i+n]
-                        sh = abs(hash(sub))
+                        sh = int.from_bytes(hashlib.sha256(sub.encode('utf-8')).digest(), byteorder='big')
                         vec[sh % dim] += 0.3
 
         # L2 Normalize

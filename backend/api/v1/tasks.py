@@ -62,9 +62,28 @@ def create_task(req: CreateTaskRequest, db: Session = Depends(get_db), current_u
     db.add(db_task)
 
     # Attach files
+    import os
+    BASE_DIR = os.getcwd()
+    UPLOAD_DIR = os.path.abspath(os.path.join(BASE_DIR, "data", "uploads"))
+    DOCUMENTS_DIR = os.path.abspath(os.path.join(BASE_DIR, "data", "documents"))
+    
+    def _is_safe_path(base_dir: str, path: str) -> bool:
+        try:
+            return os.path.commonpath([os.path.abspath(path), os.path.abspath(base_dir)]) == os.path.abspath(base_dir)
+        except:
+            return False
+
     for f in req.files:
+        # Validate that the file is safely in an allowed directory or belongs to the user's documents
+        from backend.db.models import Document
+        is_safe_upload = _is_safe_path(UPLOAD_DIR, f)
+        doc = db.query(Document).filter(Document.file_path == f, Document.user_id == current_user.id).first()
+        if not is_safe_upload and not doc:
+            raise HTTPException(status_code=403, detail=f"Unauthorized or invalid file path: {f}")
+
         db_file = TaskFile(
             task_id=task_id,
+            user_id=current_user.id,
             filename=f.split("/")[-1].split("\\")[-1],
             file_path=f
         )
@@ -121,7 +140,7 @@ def execute_task_by_id(task_id: str, db: Session = Depends(get_db), current_user
         input_data=analysis.input_data,
         files=task_files,
         options={"output_format": analysis.output_format} if analysis.output_format else {},
-        metadata={"created_at": db_task.created_at.isoformat()}
+        metadata={"created_at": db_task.created_at.isoformat(), "user_id": current_user.id}
     )
 
     # Update status to executing
@@ -149,6 +168,7 @@ def execute_task_by_id(task_id: str, db: Session = Depends(get_db), current_user
         for gen_file in output.files:
             out_rec = Output(
                 task_id=task_id,
+                user_id=current_user.id,
                 filename=gen_file.get("filename", f"{task_id}.{gen_file.get('format', 'bin')}"),
                 file_path=gen_file.get("path", ""),
                 format=gen_file.get("format", "txt")
@@ -202,8 +222,24 @@ def execute_task_direct(req: TaskExecuteDirectRequest, db: Session = Depends(get
     )
     db.add(db_task)
 
+    import os
+    BASE_DIR = os.getcwd()
+    UPLOAD_DIR = os.path.abspath(os.path.join(BASE_DIR, "data", "uploads"))
+    
+    def _is_safe_path_local(base_dir: str, path: str) -> bool:
+        try:
+            return os.path.commonpath([os.path.abspath(path), os.path.abspath(base_dir)]) == os.path.abspath(base_dir)
+        except:
+            return False
+
     for f in req.files:
-        db.add(TaskFile(task_id=task_id, filename=f.split("/")[-1].split("\\")[-1], file_path=f))
+        # Validate that the file belongs to the user's documents or is a safe upload
+        from backend.db.models import Document
+        is_safe_upload = _is_safe_path_local(UPLOAD_DIR, f)
+        doc = db.query(Document).filter(Document.file_path == f, Document.user_id == current_user.id).first()
+        if not is_safe_upload and not doc:
+            raise HTTPException(status_code=403, detail=f"Unauthorized or invalid file path: {f}")
+        db.add(TaskFile(task_id=task_id, user_id=current_user.id, filename=f.split("/")[-1].split("\\")[-1], file_path=f))
     
     db.commit()
 
@@ -211,6 +247,9 @@ def execute_task_direct(req: TaskExecuteDirectRequest, db: Session = Depends(get
     merged_options = dict(req.options)
     if analysis.output_format and "output_format" not in merged_options and "format" not in merged_options:
         merged_options["output_format"] = analysis.output_format
+
+    merged_metadata = dict(req.metadata)
+    merged_metadata["user_id"] = current_user.id
 
     task_input = AITaskInput(
         task_id=task_id,
@@ -220,7 +259,7 @@ def execute_task_direct(req: TaskExecuteDirectRequest, db: Session = Depends(get
         input_data=analysis.input_data,
         files=req.files,
         options=merged_options,
-        metadata=req.metadata
+        metadata=merged_metadata
     )
 
     try:
@@ -243,6 +282,7 @@ def execute_task_direct(req: TaskExecuteDirectRequest, db: Session = Depends(get
         for gen_file in output.files:
             db.add(Output(
                 task_id=task_id,
+                user_id=current_user.id,
                 filename=gen_file.get("filename", f"{task_id}.{gen_file.get('format', 'bin')}"),
                 file_path=gen_file.get("path", ""),
                 format=gen_file.get("format", "txt")

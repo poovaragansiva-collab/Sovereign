@@ -58,6 +58,10 @@ class AgentWorkflow:
             errors = state.get("errors", [])
             errors.append(str(e))
             state["errors"] = errors
+        except Exception as e:
+            errors = state.get("errors", [])
+            errors.append(f"Unexpected routing error: {str(e)}")
+            state["errors"] = errors
         return state
 
     def rag_node(self, state: AgentState) -> AgentState:
@@ -70,7 +74,8 @@ class AgentWorkflow:
 
         if self.retriever and query:
             try:
-                docs = self.retriever.retrieve(query)
+                user_id = state.get("metadata", {}).get("user_id")
+                docs = self.retriever.retrieve(query, user_id=user_id)
                 state["retrieved_context"] = docs
                 citations = []
                 for d in docs:
